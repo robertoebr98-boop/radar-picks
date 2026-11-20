@@ -1,0 +1,11 @@
+{
+  "name": "radar-picks",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Radar de picks: Poisson + Dixon-Coles con datos públicos de ESPN",
+  "scripts": {
+    "test": "node test/model.test.js",
+    "dev": "node test/dev-server.js"
+  },
+  "engines": { "node": ">=18" }
+}
