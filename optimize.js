@@ -70,6 +70,7 @@
       const worst = after.reduce((w, l) => ((valueOf(l) ?? l.p) < (valueOf(w) ?? w.p) ? l : w), after[0]);
       after.splice(after.indexOf(worst), 1); changes.push({ type: 'remove', from: worst, why: 'máximo 10 selecciones' });
     }
+    after.sort((a, b) => (a.t ? new Date(a.t).getTime() : Infinity) - (b.t ? new Date(b.t).getTime() : Infinity));
     return { after, changes };
   }
 

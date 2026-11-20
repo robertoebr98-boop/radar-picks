@@ -15,7 +15,7 @@
     if (!leg || !leg.matchKey || !(leg.p > 0)) return;
     let g = POOL.get(leg.matchKey);
     if (!g) POOL.set(leg.matchKey, g = { match: leg.match, items: new Map() });
-    g.items.set(leg.key, { key: leg.key, label: leg.label, p: leg.p, prov: leg.prov ? +(+leg.prov).toFixed(2) : null, provSrc: leg.provSrc });
+    g.items.set(leg.key, { key: leg.key, t: leg.t || null, label: leg.label, p: leg.p, prov: leg.prov ? +(+leg.prov).toFixed(2) : null, provSrc: leg.provSrc });
   }
   function poolView() { const m = new Map(); for (const [k, g] of POOL) m.set(k, { match: g.match, items: [...g.items.values()] }); return m; }
 
@@ -34,6 +34,9 @@
   function has(key) { return S.legs.some(l => l.key === key); }
 
   const used = l => l.dft || l.prov;
+  // Hora de México del partido, para ordenar como en Draftea.
+  const hourMX = iso => { try { return iso ? new Date(iso).toLocaleTimeString('es-MX', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hour12: false }) : ''; } catch (e) { return ''; } };
+  const byTime = (a, b) => (a.t ? new Date(a.t).getTime() : Infinity) - (b.t ? new Date(b.t).getTime() : Infinity);
 
   function totals(stake, legs, oddOf) {
     const ready = legs.length && legs.every(l => oddOf(l) > 1);
@@ -64,10 +67,11 @@
   }
 
   function render() {
+    S.legs.sort(byTime);
     const c = calc();
     const legsHtml = `<div class="slh"><span>Selección</span><span>Prov.</span><span>Draftea</span><span></span></div>` + S.legs.map(l => `
       <div class="sl">
-        <span><b>${esc(l.label)}</b>${c.weakest && c.weakest.key === l.key ? ' <span class="st vol">la más débil</span>' : ''}<br><span class="m">${esc(l.match)} · modelo ${pct(l.p)}</span></span>
+        <span><b>${esc(l.label)}</b>${c.weakest && c.weakest.key === l.key ? ' <span class="st vol">la más débil</span>' : ''}<br><span class="m">${l.t ? `<span class="hr num">${hourMX(l.t)}</span> ` : ''}${esc(l.match)} · modelo ${pct(l.p)}</span></span>
         <span class="pv"><b class="num">${l.prov ? l.prov.toFixed(2) : '-'}</b><br><span class="m">${esc(l.provSrc || '')}</span></span>
         <input class="odd" inputmode="decimal" data-k="${esc(l.key)}" value="${l.dft || ''}" placeholder="—" aria-label="Momio Draftea de ${esc(l.label)}">
         <button class="x" data-rm="${esc(l.key)}" aria-label="Quitar ${esc(l.label)}">×</button>

@@ -58,7 +58,7 @@
   }
 
   function fmtDate(iso) {
-    try { return new Date(iso).toLocaleString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; }
+    try { return new Date(iso).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) + ' (MX)'; } catch (e) { return iso; }
   }
 
   function onSearch() {
@@ -264,7 +264,7 @@
         <td><span class="mk">${esc(mk.label)}</span><span class="rg">justo ${f2(mk.fair)}</span> ${tagHtml(v)}</td>
         <td class="num">${pct(mk.p)} <span class="rg">/ ${pct(mk.worst)}</span><div class="meter"><i style="width:${mk.p * 100}%"></i>${be ? `<s style="left:${be}%"></s>` : ''}</div></td>
         <td><input class="odd" inputmode="decimal" data-id="${mk.id}" value="${odd || ''}" placeholder="—" aria-label="Momio ${esc(mk.label)}"></td>
-        <td class="addc">${slipBtn({ key: `${matchKey}:${mk.id}`, matchKey, match: matchName, label: mk.label, p: mk.p, ...provOf(mk, odd) })}</td></tr>`;
+        <td class="addc">${slipBtn({ key: `${matchKey}:${mk.id}`, matchKey, t: c.fixture ? c.fixture.date : null, match: matchName, label: mk.label, p: mk.p, ...provOf(mk, odd) })}</td></tr>`;
     }
     $('mkts').innerHTML = html;
     $('oddsrc').textContent = S.oddsFrom ? `momios precargados: ${S.oddsFrom}` : '';
