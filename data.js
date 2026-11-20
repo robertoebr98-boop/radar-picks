@@ -13,6 +13,7 @@
     { id: 'fra.1', name: 'Ligue 1' },
     { id: 'ned.1', name: 'Eredivisie' },
     { id: 'por.1', name: 'Liga Portugal' },
+    { id: 'mex.w.1', name: 'Liga MX Femenil' },
     { id: 'eng.w.1', name: 'WSL (femenil)' },
     { id: 'esp.w.1', name: 'Liga F (femenil)' },
     { id: 'usa.nwsl', name: 'NWSL (femenil)' },

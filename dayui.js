@@ -8,6 +8,19 @@
   const SOCCER = D.LEAGUES.map(l => l.id);
   const MAIN = ['mex.1', 'uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1'];
 
+  // Ligas que Draftea MX suele ofrecer. No hay lista pública: es una lista conservadora y Roberto la ajusta en la página.
+  const DFT_DEFAULT = ['mex.1', 'mex.w.1', 'uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ned.1', 'por.1', 'eng.w.1', 'usa.nwsl', 'uefa.wchampions', 'nba', 'nfl'];
+  const DKEY = 'radar.dft';
+  function loadDft() { try { const x = JSON.parse(localStorage.getItem(DKEY)); if (x && Array.isArray(x.lgs)) return x; } catch (e) { /* nada */ } return { on: true, lgs: DFT_DEFAULT }; }
+  let DFT = loadDft();
+  function saveDft() { try { localStorage.setItem(DKEY, JSON.stringify(DFT)); } catch (e) { /* nada */ } }
+  function dftPanel() {
+    const all = [...D.LEAGUES, ...Y.US.map(u => ({ id: u.id, name: u.name }))];
+    $('dftlist').innerHTML = all.map(l => `<label><input type="checkbox" data-dl="${l.id}" ${DFT.lgs.includes(l.id) ? 'checked' : ''}> ${esc(l.name)}</label>`).join('');
+    $('dfton').checked = DFT.on;
+    $('dftbox').classList.toggle('off', !DFT.on);
+  }
+
   function localISO(d) { const z = new Date(d.getTime() - d.getTimezoneOffset() * 6e4); return z.toISOString().slice(0, 10); }
   // Hora de México (como la muestra Draftea).
   function hour(iso) { try { return new Date(iso).toLocaleTimeString('es-MX', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hour12: false }); } catch (e) { return ''; } }
@@ -24,6 +37,14 @@
       '<option value="all">Todo (fútbol + NBA + NFL)</option>',
     ].join('');
     $('dgo').addEventListener('click', () => run());
+    dftPanel();
+    $('dfton').addEventListener('change', () => { DFT.on = $('dfton').checked; saveDft(); dftPanel(); });
+    $('dftlist').addEventListener('change', e => {
+      const id = e.target.dataset.dl; if (!id) return;
+      DFT.lgs = e.target.checked ? [...new Set([...DFT.lgs, id])] : DFT.lgs.filter(x => x !== id);
+      saveDft();
+    });
+    $('dftreset').addEventListener('click', () => { DFT = { on: true, lgs: DFT_DEFAULT }; saveDft(); dftPanel(); });
   }
 
   let ran = false;
@@ -41,7 +62,10 @@
       $('dout').classList.remove('hidden');
     }
     if (!date) return;
-    const ids = v === 'main' ? MAIN : v === 'soccer' ? SOCCER : v === 'all' ? [...SOCCER, 'nba', 'nfl'] : [v];
+    let ids = v === 'main' ? MAIN : v === 'soccer' ? SOCCER : v === 'all' ? [...SOCCER, 'nba', 'nfl'] : [v];
+    // Solo ligas de Draftea (si eligió una liga suelta, se respeta su elección).
+    if (DFT.on && ids.length > 1) ids = ids.filter(id => DFT.lgs.includes(id));
+    if (!ids.length) { $('dout').innerHTML = ''; $('dmsg').innerHTML = '<p class="note">Ninguna liga marcada en "Solo ligas de Draftea". Marca alguna o apaga el filtro.</p>'; return; }
     $('dout').innerHTML = '';
     $('dmsg').innerHTML = '<div class="loading"><span class="spin"></span>Analizando partidos…</div>';
     $('dgo').disabled = true;

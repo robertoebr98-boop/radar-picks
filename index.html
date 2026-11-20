@@ -184,6 +184,12 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
 .optl{margin:0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:4px}
 .optl .m{color:var(--muted);font-size:11.5px}
 .hr{display:inline-block;padding:1px 6px;border-radius:6px;background:var(--sub);border:1px solid var(--line2);color:var(--accent);font-size:11.5px;font-weight:700}
+.dftbox{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.dftbox.off details{opacity:.5}
+.dfth{display:flex;gap:6px;align-items:center}
+.dftbox summary{cursor:pointer;color:var(--accent);font-size:12.5px}
+.dftlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px 10px;margin-top:6px}
+.dftlist label{display:flex;gap:6px;align-items:center;font-size:12.5px}
 .warnbox{background:var(--warn-soft);color:var(--warn);padding:8px 10px;border-radius:10px;font-size:12px}
 .money{display:inline-flex;align-items:center;gap:4px;font-weight:600}
 .slipbar{position:fixed;left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom,0px));width:min(568px,calc(100% - 32px));display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 14px;border-radius:14px;border:1px solid var(--accent);background:var(--card);color:var(--fg);font-size:12.5px;box-shadow:0 10px 30px rgb(0 0 0/.45);cursor:pointer;z-index:10;text-align:left}
@@ -250,6 +256,13 @@ td.addc{width:34px;padding-left:6px}
       <input class="in" type="date" id="dday" aria-label="Fecha" style="flex:0 1 170px">
       <select class="in" id="dlg" aria-label="Liga o deporte"></select>
       <button class="btn" id="dgo">Pronosticar</button>
+    </div>
+    <div id="dftbox" class="dftbox">
+      <label class="dfth"><input type="checkbox" id="dfton" checked> <b>Solo ligas de Draftea</b></label>
+      <details><summary>Elegir ligas</summary>
+        <div id="dftlist" class="dftlist"></div>
+        <p class="note">Marca solo las ligas que ves en Draftea; se guarda en este navegador. Si eliges una liga suelta arriba, se analiza aunque no esté marcada. <button class="btn ghost sm" id="dftreset" type="button">Restablecer</button></p>
+      </details>
     </div>
     <div id="dmsg"></div>
     <div id="dout" style="display:flex;flex-direction:column;gap:12px"></div>
