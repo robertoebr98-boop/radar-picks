@@ -310,13 +310,22 @@
   function renderVerdict(res, inp) {
     const rows = res.markets.map(mk => ({ mk, odd: S.odds[mk.id], v: M.verdict(mk, S.odds[mk.id]) }));
     const dbl = rows.filter(r => r.v.tag === 'doblete').sort((a, b) => b.mk.worst - a.mk.worst);
-    const val = rows.filter(r => r.v.tag === 'valor').sort((a, b) => b.v.ev - a.v.ev);
+    // Valor "seguro" = cumple tus reglas de combinada (prob ≥ 60%, sin volado, momio ≥ 1.30).
+    // El resto con valor (sorpresas a momio alto) va aparte: a la larga pagan, pero fallan la mayoría de las veces.
+    const okRules = r => r.mk.p >= 0.6 && r.odd >= 1.30;
+    const valAll = rows.filter(r => r.v.tag === 'valor').sort((a, b) => b.v.ev - a.v.ev);
+    const val = valAll.filter(okRules), risky = valAll.filter(r => !okRules(r));
     const cand = rows.filter(r => r.v.tag === 'candidato' && r.mk.fair >= 1.2).sort((a, b) => b.mk.p - a.mk.p).slice(0, 4);
     let html = '';
     for (const r of dbl.slice(0, 4)) html += vrow(r, 'ok', 'Doblete');
     for (const r of val.slice(0, 4)) html += vrow(r, 'val', 'Valor');
     if (!dbl.length && !val.length) {
       html += '<div class="vrow"><span>Ningún mercado con momio capturado pasa los filtros.</span></div>';
+    }
+    if (risky.length) {
+      html += '<h3 style="margin-top:6px">Valor de riesgo (no para combinadas)</h3>';
+      for (const r of risky.slice(0, 3)) html += vrow(r, 'risk', 'Riesgo');
+      html += `<p class="note">El momio paga más de lo que vale, pero pegan ${risky.length === 1 ? 'menos' : 'pocas'} veces (prob menor a 60% o volado). Solo como apuesta sencilla y chica; en un ticket combinado lo tumban.</p>`;
     }
     if (cand.length) html += '<h3 style="margin-top:6px">Candidatos: captura su momio</h3>';
     for (const r of cand) html += `<div class="vrow"><span><b>${esc(r.mk.label)}</b><br><span class="note">prob ${pct(r.mk.p)}, peor ${pct(r.mk.worst)}</span></span><span class="r"><span class="note">pide ≥</span><b class="num">${f2(r.v.minNeeded)}</b></span></div>`;
@@ -338,7 +347,7 @@
   }
 
   function vrow(r, cls, tag) {
-    return `<div class="vrow ${cls}"><span><b>${esc(r.mk.label)}</b><br><span class="note">prob ${pct(r.mk.p)} · peor ${pct(r.mk.worst)} · valor ${f2(r.v.ev)}</span></span><span class="r"><b class="num">${f2(r.odd)}</b><span class="st ${cls === 'ok' ? 'ok' : 'lean'}">${tag}</span></span></div>`;
+    return `<div class="vrow ${cls}"><span><b>${esc(r.mk.label)}</b><br><span class="note">prob ${pct(r.mk.p)} · peor ${pct(r.mk.worst)} · valor ${f2(r.v.ev)}</span></span><span class="r"><b class="num">${f2(r.odd)}</b><span class="st ${cls === 'ok' ? 'ok' : cls === 'risk' ? 'vol' : 'lean'}">${tag}</span></span></div>`;
   }
 
   function formCol(cls, name, l5) {

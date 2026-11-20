@@ -91,6 +91,7 @@ select.in{flex:1 1 160px}
 .vrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--sub)}
 .vrow.ok{background:var(--good-soft)}
 .vrow.val{background:var(--accent-soft)}
+.vrow.risk{background:var(--warn-soft)}
 .vrow b{font-weight:600}
 .vrow .r{display:flex;gap:10px;align-items:center;flex-shrink:0}
 
@@ -237,7 +238,7 @@ td.addc{width:34px;padding-left:6px}
     <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--on-accent)" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="var(--on-accent)"/></svg>
     Radar de picks
   </h1>
-    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span>
+    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v20-nov-b</span>
       <button class="btn sm" id="refresh">Actualizar</button>
       <button class="icon" id="theme" aria-label="Cambiar tema claro u oscuro">☀︎</button></div>
   </div>
@@ -365,16 +366,16 @@ td.addc{width:34px;padding-left:6px}
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
 </div>
 <button class="slipbar hidden" id="slipbar" aria-label="Ver ticket"></button>
-<script src="model.js"></script>
-<script src="context.js"></script>
-<script src="data.js"></script>
-<script src="app.js"></script>
-<script src="day.js"></script>
-<script src="props.js"></script>
-<script src="dayui.js"></script>
-<script src="optimize.js"></script>
-<script src="opinion.js"></script>
-<script src="slip.js"></script>
-<script src="saved.js"></script>
+<script src="model.js?v=20261120b"></script>
+<script src="context.js?v=20261120b"></script>
+<script src="data.js?v=20261120b"></script>
+<script src="app.js?v=20261120b"></script>
+<script src="day.js?v=20261120b"></script>
+<script src="props.js?v=20261120b"></script>
+<script src="dayui.js?v=20261120b"></script>
+<script src="optimize.js?v=20261120b"></script>
+<script src="opinion.js?v=20261120b"></script>
+<script src="slip.js?v=20261120b"></script>
+<script src="saved.js?v=20261120b"></script>
 </body>
 </html>

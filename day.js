@@ -102,7 +102,7 @@
 
   function valuePicks(matches) {
     const out = [];
-    for (const m of matches) for (const l of m.legs) if (l.odd && l.ev >= M.CFG.VALUE_EV && l.tag !== 'volado' && l.odd >= TICKET.MIN_ODD && !m.us) out.push({ match: m, leg: l });
+    for (const m of matches) for (const l of m.legs) if (l.odd && l.ev >= M.CFG.VALUE_EV && l.tag !== 'volado' && l.p >= 0.6 && l.odd >= TICKET.MIN_ODD && !m.us) out.push({ match: m, leg: l });
     return out.sort((a, b) => b.leg.ev - a.leg.ev).slice(0, 10);
   }
 
