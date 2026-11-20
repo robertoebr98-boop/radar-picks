@@ -151,13 +151,14 @@ t('contexto de tabla Liga MX última jornada', () => {
   const tab = pts.map((p, i) => ({ teamId: 't' + (i + 1), gp: 16, pts: p }));
   const c = C.classify(tab, 'mex.1');
   assert.strictEqual(c.get('t1').tag, 'asegurado');
-  assert.strictEqual(c.get('t6').tag, 'presion');    // defiende liguilla directa
-  assert.strictEqual(c.get('t10').tag, 'presion');   // defiende play-in
-  assert.strictEqual(c.get('t12').tag, 'presion');   // a 2 pts del play-in
+  assert.strictEqual(c.get('t6').tag, 'asegurado');  // 26 pts: el 9º ya no lo alcanza
+  assert.strictEqual(c.get('t8').tag, 'presion');    // defiende el 8º lugar
+  assert.strictEqual(c.get('t10').tag, 'presion');   // a 3 pts del 8º con 1 partido
+  assert.strictEqual(c.get('t12').tag, 'sin-nada');  // ya no alcanza
   assert.strictEqual(c.get('t18').tag, 'sin-nada');
   const early = C.classify(tab.map(x => ({ ...x, gp: 5 })), 'mex.1');
   assert.strictEqual(early.get('t1').tag, 'normal');
-  assert.strictEqual(C.factor(c.get('t12')), 1.08);
+  assert.strictEqual(C.factor(c.get('t10')), 1.08);
 });
 t('últimos 5 enfrentamientos: resumen y peso 10%', () => {
   const g = [{ id: '1', homeId: 'A', awayId: 'B', hs: 3, as: 1, stats: { home: { wonCorners: 6 }, away: { wonCorners: 4 } } }, { id: '2', homeId: 'B', awayId: 'A', hs: 0, as: 2 }, { id: '3', homeId: 'A', awayId: 'B', hs: 1, as: 1 }];

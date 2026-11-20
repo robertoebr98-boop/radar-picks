@@ -5,7 +5,8 @@
   // Reglas por liga: partidos por equipo, líneas de corte (posición máxima que entra) y zona de descenso.
   const RULES = {
     'mex.w.1': { games: 17, lines: [{ pos: 8, name: 'liguilla' }], releg: 0 },
-    'mex.1': { games: 17, lines: [{ pos: 6, name: 'liguilla directa' }, { pos: 10, name: 'play-in' }], releg: 0 },
+    // Apertura 2026 (año de Mundial): sin play-in, los 8 primeros van directo a cuartos.
+    'mex.1': { games: 17, lines: [{ pos: 8, name: 'cuartos de final' }], releg: 0 },
     'eng.1': { games: 38, lines: [{ pos: 4, name: 'Champions' }, { pos: 6, name: 'Europa' }], releg: 3 },
     'esp.1': { games: 38, lines: [{ pos: 4, name: 'Champions' }, { pos: 6, name: 'Europa' }], releg: 3 },
     'ita.1': { games: 38, lines: [{ pos: 4, name: 'Champions' }, { pos: 6, name: 'Europa' }], releg: 3 },

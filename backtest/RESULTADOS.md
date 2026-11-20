@@ -79,3 +79,17 @@ quien se juega algo ataca 8% más    Brier 0.5921  (mejora poco)
 | 10%, mínimo 5 H2H | 0.5870 | 0.9852 | 0.2435 |
 
 Conclusión: el H2H aporta poco una vez que hay fuerza por rival y remates (mejora 0.0004 de Brier con 10%); más de 15% empeora. Se usa 10% (CFG.H2H_WEIGHT). Ambos anotan no cambia (0.2459).
+
+## Forma reciente y "quiebres" de rendimiento, 20-nov-2026
+Pregunta (aficionado de Pumas): ¿pesan más los goles de las últimas jornadas? ¿Hay que dar más peso a lo posterior a un cambio (alineación, refuerzo)? 7,994 partidos.
+
+| variante | Brier 1X2 |
+|---|---|
+| actual (vida media 30 partidos) | 0.5901 |
+| vida media 6 / 10 / 15 / 50 | 0.5917 / 0.5906 / 0.5902 / 0.5902 |
+| quiebre (últimos 6 vs 12 anteriores, ≥0.8 goles netos) ×2 | 0.5900 |
+| solo partidos con quiebre ≥1.5 (980): sin peso extra / ×2 / ×3 | 0.5920 / 0.5921 / 0.5923 |
+| solo partidos con quiebre ≥2.0 (206): sin peso extra / ×2 / ×3 | 0.5617 / 0.5608 / 0.5604 |
+
+Conclusión: dar más peso a lo reciente empeora; los quiebres moderados son ruido y solo los extremos (206 de 7,994) mejoran algo, con muestra chica. No se cambia el cálculo: se avisa en el análisis cuando hay quiebre (≥1.5) y hay un ajuste manual "en racha / en crisis" (±8% ataque) marcado como opinión.
+Además: Liga MX Apertura 2026 no tiene play-in (año de Mundial): los 8 primeros van a cuartos; context.js actualizado.

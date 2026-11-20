@@ -25,7 +25,7 @@ function evaluate(seasons, opt) {
     opt._older = s.older || [];
     for (const m of s.matches) {
       const pred = predict(hist, m, { ...opt, lgId: LGID[s.lg] }, prev);
-      if (pred && (!opt.onlyLate || m._late) && (!opt.onlyH2H || m._h2h)) {
+      if (pred && (!opt.onlyLate || m._late) && (!opt.onlyH2H || m._h2h) && (!opt.onlyBrk || m._brk)) {
         const o = m.hg > m.ag ? 0 : m.hg === m.ag ? 1 : 2;
         const p = [pred.p1, pred.px, pred.p2];
         brier += p.reduce((acc, q, i) => acc + (q - (i === o ? 1 : 0)) ** 2, 0);
@@ -59,8 +59,10 @@ function table(hist) {
 
 function predict(hist, m, opt, prev) {
   const t = table(hist);
+  const saved = { ...M.CFG };
+  Object.assign(M.CFG, opt.cfg || {});
   const th = t.get(m.home), ta = t.get(m.away);
-  if (!th || !ta || th.gp < opt.minGames || ta.gp < opt.minGames) return null;
+  if (!th || !ta || th.gp < opt.minGames || ta.gp < opt.minGames) { Object.assign(M.CFG, saved); return null; }
   const all = [...t.values()];
   const avg = M.leagueAverage(all);
   const avgSot = all.reduce((s, x) => s + x.sf, 0) / all.reduce((s, x) => s + x.gp, 0);
@@ -78,11 +80,10 @@ function predict(hist, m, opt, prev) {
       const g = M.adjustedStrength([...toEv(mine(id)), ...toEv(prevOf(id), true)], id, oppS, avg);
       const s = opt.sot ? M.adjustedStrength([...toSot(mine(id)), ...toSot(prevOf(id), true)], id, oppS, avg) : null;
       o.adj = s ? M.combineAdj(g, s) : g;
+      if (g.brk || (s && s.brk)) m._brk = true;
     }
     return o;
   };
-  const saved = { ...M.CFG };
-  Object.assign(M.CFG, opt.cfg || {});
   const inp = { avg, home: side(m.home, th), away: side(m.away, ta) };
   let { lh, la } = M.expectedGoals(inp);
   if (opt.ctx) {

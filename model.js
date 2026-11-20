@@ -22,7 +22,11 @@
     ADJ_PRIOR_GOALS: 1,  // goles 'fantasma' para no sobrerreaccionar
     ADJ_WEIGHT: 0.75,    // 75% fuerza ajustada por rival, 25% tabla
     H2H_WEIGHT: 0.10,    // últimos 5 enfrentamientos directos: 10% (backtest 5,621 partidos: mejor que 0, 5, 15, 20 y 30%)
-    H2H_MIN: 3,          // con menos de 3 enfrentamientos no se usa
+    H2H_MIN: 3,
+    BREAK_N: 6,          // quiebre de forma: últimos 6 partidos
+    BREAK_T: 1.5,        // diferencia (goles netos vs lo esperado por partido) para avisar de un cambio de forma
+    BREAK_BOOST: 1,      // peso extra a lo reciente si hay quiebre: 1 = solo aviso (backtest: x2 y x3 no mejoran)
+    MOOD: 0.08,          // ajuste manual en racha / en crisis: ±8% de ataque (opinión, sin validar)          // con menos de 3 enfrentamientos no se usa
     ADJ_SOT: 0.8,        // dentro del ajuste: 80% remates a puerta, 20% goles (si hay remates)
   };
 
@@ -135,17 +139,32 @@
   function adjustedStrength(matches, teamId, oppStrength, avg) {
     const done = matches.filter(m => m.hs != null && m.as != null).sort((a, b) => new Date(b.date) - new Date(a.date));
     let gf = 0, ga = 0, expF = 0, expA = 0, n = 0;
+    // Quiebre de rendimiento: si los últimos BREAK_N partidos difieren mucho de los anteriores
+    // (diferencia de goles vs lo esperado), esos últimos pesan BREAK_BOOST veces más.
+    let boost = 1, brk = null;
+    if (CFG.BREAK_T < 9 && done.length >= CFG.BREAK_N + 4) {
+      const res = done.map(m => {
+        const home = m.homeId === teamId;
+        const opp = oppStrength(home ? m.awayId : m.homeId) || { att: 1, def: 1 };
+        const eF = avg * (home ? CFG.HFA_HOME : CFG.HFA_AWAY) * opp.def, eA = avg * (home ? CFG.HFA_AWAY : CFG.HFA_HOME) * opp.att;
+        return ((home ? m.hs : m.as) - eF) - ((home ? m.as : m.hs) - eA);
+      });
+      const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+      const rec = res.slice(0, CFG.BREAK_N), old = res.slice(CFG.BREAK_N, CFG.BREAK_N + 12);
+      const diff = mean(rec) - mean(old);
+      if (Math.abs(diff) >= CFG.BREAK_T) { boost = CFG.BREAK_BOOST; brk = { diff, n: CFG.BREAK_N, rec: mean(rec), old: mean(old) }; }
+    }
     done.forEach((m, i) => {
       const home = m.homeId === teamId;
       const opp = oppStrength(home ? m.awayId : m.homeId) || { att: 1, def: 1 };
-      const w = Math.pow(0.5, i / CFG.HALF_LIFE) * (m.prevSeason ? 0.6 : 1);
+      const w = Math.pow(0.5, i / CFG.HALF_LIFE) * (m.prevSeason ? 0.6 : 1) * (i < CFG.BREAK_N ? boost : 1);
       gf += w * (home ? m.hs : m.as); ga += w * (home ? m.as : m.hs);
       expF += w * avg * (home ? CFG.HFA_HOME : CFG.HFA_AWAY) * opp.def;
       expA += w * avg * (home ? CFG.HFA_AWAY : CFG.HFA_HOME) * opp.att;
       n++;
     });
     const K = CFG.ADJ_PRIOR_GOALS;
-    return { att: (gf + K) / (expF + K), def: (ga + K) / (expA + K), n };
+    return { att: (gf + K) / (expF + K), def: (ga + K) / (expA + K), n, brk };
   }
 
   // Mezcla la fuerza por goles con la fuerza por remates a puerta (convertidos a goles).

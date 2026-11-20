@@ -140,6 +140,7 @@
       S.odds = MEMO[S.key] || {};
       S.out = MEMO[S.key + '.out'] || {};
       S.bajas = MEMO[S.key + '.bajas'] || { home: 0, away: 0 };
+      S.mood = MEMO[S.key + '.mood'] || { home: 0, away: 0 };
       if (!Object.keys(S.odds).length) applyEspnOdds(false);
       $('searchmsg').innerHTML = '';
       $('result').classList.remove('hidden');
@@ -195,9 +196,9 @@
     const ppgH = c.sth.gp ? c.sth.pts / c.sth.gp : 0, ppgA = c.sta.gp ? c.sta.pts / c.sta.gp : 0;
     const inp = {
       avg: c.avg,
-      home: { motiveF: window.RadarContext ? window.RadarContext.factor(c.motH) : 1, team: c.sth, split: c.splH.home, form: M.formFactor(l5h.map(x => x.result), ppgH), bajas: bajasPct('home'), adj: c.adjH },
+      home: { motiveF: (window.RadarContext ? window.RadarContext.factor(c.motH) : 1) * (1 + M.CFG.MOOD * (S.mood.home || 0)), team: c.sth, split: c.splH.home, form: M.formFactor(l5h.map(x => x.result), ppgH), bajas: bajasPct('home'), adj: c.adjH },
       h2h: c.h2hS ? { n: c.h2hS.n, gH: c.h2hS.gH, gA: c.h2hS.gA } : null,
-      away: { motiveF: window.RadarContext ? window.RadarContext.factor(c.motA) : 1, team: c.sta, split: c.splA.away, form: M.formFactor(l5a.map(x => x.result), ppgA), bajas: bajasPct('away'), adj: c.adjA },
+      away: { motiveF: (window.RadarContext ? window.RadarContext.factor(c.motA) : 1) * (1 + M.CFG.MOOD * (S.mood.away || 0)), team: c.sta, split: c.splA.away, form: M.formFactor(l5a.map(x => x.result), ppgA), bajas: bajasPct('away'), adj: c.adjA },
     };
     const o = S.odds;
     let market = (o['1'] && o['X'] && o['2']) ? { odds1: o['1'], oddsX: o['X'], odds2: o['2'], over25: o['O2.5'], under25: o['U2.5'] } : null;
@@ -317,6 +318,7 @@
       if (m.tag === 'sin-nada') notes.push(`${t.short || t.name} no se juega nada`);
       if (m.tag === 'presion') notes.push(`${t.short || t.name} ${m.detail.split(' · ')[1] || 'se juega algo'}: el modelo le sube 8% el ataque`);
     }
+    for (const [side, t] of [['home', c.home], ['away', c.away]]) if (S.mood[side]) notes.push(`tu opinión: ${t.short || t.name} ${S.mood[side] > 0 ? 'en racha (+8% ataque)' : 'en crisis (−8% ataque)'}; no está validado con datos`);
     notes.push('selecciones del mismo partido están correlacionadas: combina con otro partido');
     $('vnote').textContent = notes.join(' · ') + '.';
   }
@@ -382,17 +384,33 @@
       }).join('');
       return `<div class="fcol"><div class="ftitle ${side === 'home' ? 'h' : 'a'}">${esc(team.short || team.name)}</div>
         ${items || '<p class="note">ESPN no trae líderes de este partido todavía.</p>'}
-        <div class="bj"><span>% ataque perdido por otras bajas</span><input class="odd" inputmode="numeric" data-side="${side}" value="${S.bajas[side] || ''}" placeholder="0"></div></div>`;
+        <div class="bj"><span>% ataque perdido por otras bajas</span><input class="odd" inputmode="numeric" data-side="${side}" value="${S.bajas[side] || ''}" placeholder="0"></div>
+        ${brkNote(side === 'home' ? c.adjH : c.adjA)}
+        <div class="bj"><span>Momento (tu opinión)</span><select class="in sm" data-mood="${side}" aria-label="Momento de ${esc(team.short || team.name)}">
+          <option value="0" ${!S.mood[side] ? 'selected' : ''}>Normal</option>
+          <option value="1" ${S.mood[side] === 1 ? 'selected' : ''}>En racha (+8% ataque)</option>
+          <option value="-1" ${S.mood[side] === -1 ? 'selected' : ''}>En crisis (−8% ataque)</option></select></div></div>`;
     };
     $('players').innerHTML = col('home', c.home) + col('away', c.away);
     $('players').querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', () => {
       if (cb.checked) S.out[cb.dataset.k] = 1; else delete S.out[cb.dataset.k];
       MEMO[S.key + '.out'] = S.out; setTimeout(render);
     }));
+    $('players').querySelectorAll('select[data-mood]').forEach(sel => sel.addEventListener('change', () => {
+      S.mood[sel.dataset.mood] = +sel.value; MEMO[S.key + '.mood'] = S.mood; setTimeout(render);
+    }));
     $('players').querySelectorAll('input[data-side]').forEach(inp => inp.addEventListener('change', () => {
       const n = Math.max(0, Math.min(40, parseFloat(inp.value) || 0));
       S.bajas[inp.dataset.side] = n; MEMO[S.key + '.bajas'] = S.bajas; setTimeout(render);
     }));
+  }
+
+  // Aviso de cambio de forma: los últimos 6 partidos rinden muy distinto a los anteriores (ajustado por rival).
+  function brkNote(adj) {
+    const b = adj && ((adj.goals && adj.goals.brk) || adj.brk || (adj.sot && adj.sot.brk));
+    if (!b) return '';
+    const up = b.diff > 0;
+    return `<p class="note"><span class="st ${up ? 'ok' : 'bad'}">${up ? 'Mejoró' : 'Empeoró'}</span> en sus últimos ${b.n} partidos: ${up ? '+' : ''}${b.diff.toFixed(1)} goles netos por partido frente a lo que se esperaba antes. El modelo ya da más peso a lo reciente; si crees que es un cambio real (alineación, técnico, refuerzo), márcalo abajo.</p>`;
   }
 
   function renderCalc(inp, res) {
