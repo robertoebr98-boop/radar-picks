@@ -91,6 +91,42 @@
     return parts.length ? `<br><span class="mline">${parts.join(' ')}</span>` : '';
   }
 
+  // Tu opinión por partido, al lado del modelo (no cambia sus números).
+  const OP = () => window.RadarOpinion;
+  const opKey = m => `${m.lg}:${m.ev.homeId}:${m.ev.awayId}:${String(m.ev.date || '').slice(0, 10)}`;
+  const pOf = (m, id) => { const x = m.res && m.res.markets.find(k => k.id === id); return x ? x.p : null; };
+  function opTag(m) {
+    const r = OP() && OP().get(opKey(m));
+    if (!r) return '';
+    const a = OP().agreement(r.pModel);
+    return a ? `<span class="st ${a.tag}">modelo ${pct(r.pModel)} · ${a.text}</span>` : '';
+  }
+  function opSelect(m, idx) {
+    if (!OP() || !m.res || m.us) return '';
+    const r = OP().get(opKey(m)), h = Y.shortName(m.ev.homeName), v = Y.shortName(m.ev.awayName);
+    const opts = OP().PICKS.map(p => `<option value="${p.id}" ${r && r.pick === p.id ? 'selected' : ''}>${esc(p.label(h, v))}</option>`).join('');
+    return `<div class="opw"><label>Tu opinión <select class="in sm" data-op="${idx}"><option value="">—</option>${opts}</select></label><span id="opt${idx}">${opTag(m)}</span></div>`;
+  }
+  function opPlayed(m) {
+    if (!OP()) return '';
+    const r = OP().resolve(opKey(m), m.ev.hs, m.ev.as);
+    if (!r || r.hit == null) return '';
+    const lab = (OP().PICKS.find(p => p.id === r.pick) || { label: () => r.pick }).label(Y.shortName(m.ev.homeName), Y.shortName(m.ev.awayName));
+    return ` <span class="st ${r.hit ? 'ok' : 'bad'}">tu opinión ${r.hit ? '✓' : '✗'} ${esc(lab)}</span>`;
+  }
+  function opSummary() {
+    const s = OP() && OP().stats();
+    if (!s || (!s.n && !s.pending)) return '';
+    if (!s.n) return `<p class="note">Tienes ${s.pending} opinión(es) esperando resultado. Cuando terminen los partidos verás aquí si tu intuición le gana al modelo.</p>`;
+    const verdict = s.n < 30 ? `Con ${s.n} opiniones aún es muy pronto para concluir; hacen falta unas 30.`
+      : s.hits > s.expected + 2 ? 'Tu intuición acierta más de lo que el modelo esperaba: vale la pena tomarla en cuenta.'
+      : s.hits < s.expected - 2 ? 'Tu intuición acierta menos de lo que el modelo esperaba: confía más en el modelo.'
+      : 'Tu intuición acierta lo mismo que el modelo esperaba: no le agrega ni le quita.';
+    return `<div class="tk"><h3>Tu opinión vs el modelo</h3>
+      <div class="sum"><span>Acertaste <b class="num">${s.hits} de ${s.n}</b></span><span>El modelo esperaba <b class="num">${s.expected.toFixed(1)}</b></span></div>
+      <p class="note">Cuando el modelo coincidía (≥60%): ${s.agree.hits} de ${s.agree.n}. Cuando no coincidía (&lt;40%): ${s.disagree.hits} de ${s.disagree.n}. ${verdict}${s.pending ? ` Pendientes: ${s.pending}.` : ''}</p></div>`;
+  }
+
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
   let SHOWN = [];
@@ -195,7 +231,7 @@
       registerMatch(m);
       html += `<div class="dmw"><button class="dm" ${clickable ? `data-lg="${m.lg}" data-h="${m.ev.homeId}" data-a="${m.ev.awayId}"` : 'disabled'}>
         <span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br><span class="m">${sub}</span>${motLine(m)}</span><span style="text-align:right">${right}</span></button>
-        ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}</div>`;
+        ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}${opSelect(m, idx)}</div>`;
     }
     if ((r.live || []).length) {
       html += '<h3>En juego (fuera del ticket)</h3>' + [...r.live].sort(byTime).map(m => `<div class="dm" style="cursor:default"><span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)} · ${esc(m.ev.detail || 'en juego')}</span></span><span class="num">${m.ev.hs ?? '-'}-${m.ev.as ?? '-'}</span></div>`).join('');
@@ -206,11 +242,12 @@
       html += [...r.played].sort(byTime).map(m => {
         const L = m.reviewLeg;
         const tag = L ? `<span class="st ${L.hit ? 'ok' : 'bad'}">${L.hit ? '✓' : '✗'} ${esc(L.label)} ${pct(L.p)}</span>` : '<span class="m">sin selección sugerida</span>';
-        return `<div class="dm" style="cursor:default"><span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br>${tag}</span><b class="num">${esc(m.result || '-')}</b></div>`;
+        return `<div class="dm" style="cursor:default"><span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br>${tag}${opPlayed(m)}</span><b class="num">${esc(m.result || '-')}</b></div>`;
       }).join('');
       if (rv && rv.surprises.length) html += `<p class="note">Sorpresas: ${rv.surprises.map(x => `${esc(x.label)} (${pct(x.p)}) no ganó`).join(' · ')}.</p>`;
       html += '<p class="note">La revisión usa la tabla de hoy, que ya incluye estos resultados; es una guía, no una medición exacta.</p>';
     }
+    html += opSummary();
     html += '<p class="note">Toca un partido de fútbol para ver el análisis completo y capturar tus momios. NBA y NFL usan la probabilidad de la casa sin margen (sin modelo propio todavía). El pronóstico del día usa tabla + forma + momios; el análisis completo además usa local/visita y bajas.</p>';
     $('dout').innerHTML = html;
     const all = $('addall');
@@ -219,6 +256,11 @@
       $('slip').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     if (window.RadarSlip) window.RadarSlip.refresh();
+    $('dout').querySelectorAll('select[data-op]').forEach(sel => sel.addEventListener('change', () => {
+      const m = SHOWN[+sel.dataset.op], k = opKey(m);
+      OP().set(k, sel.value ? { pick: sel.value, pModel: pOf(m, sel.value), match: `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`, date: m.ev.date } : null);
+      $('opt' + sel.dataset.op).innerHTML = opTag(m);
+    }));
     $('dout').querySelectorAll('[data-mk]').forEach(b => b.addEventListener('click', () => openMarkets(+b.dataset.mk, b)));
     $('dout').querySelectorAll('.dm[data-lg]').forEach(b => b.addEventListener('click', () => window.RadarApp.openMatch(b.dataset.lg, b.dataset.h, b.dataset.a)));
   }

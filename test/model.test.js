@@ -174,6 +174,19 @@ t('últimos 5 enfrentamientos: resumen y peso 10%', () => {
   const c = M.expectedGoals({ ...JSON.parse(JSON.stringify(base)), h2h: { n: 2, gH: 3, gA: 0 } });
   assert.strictEqual(c.lh, a.lh);
 });
+const OP = require('../opinion.js');
+t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
+  OP._useMemory({});
+  OP.set('a', { pick: '1X', pModel: 0.7 }); OP.set('b', { pick: '2', pModel: 0.3 }); OP.set('c', { pick: 'X', pModel: 0.28 });
+  assert.strictEqual(OP.resolve('a', 1, 1).hit, true);
+  assert.strictEqual(OP.resolve('b', 0, 2).hit, true);
+  assert.strictEqual(OP.resolve('c', 2, 0).hit, false);
+  assert.strictEqual(OP.resolve('a', 0, 3).hit, true); // ya calificada, no cambia
+  const s = OP.stats();
+  assert.strictEqual(s.n, 3); assert.strictEqual(s.hits, 2); assert(Math.abs(s.expected - 1.28) < 1e-9);
+  assert.deepStrictEqual(s.disagree, { n: 2, hits: 1 });
+  assert.strictEqual(OP.agreement(0.72).tag, 'ok');
+});
 const O = require('../optimize.js');
 t('optimizar ticket: cambia, quita y respeta reglas', () => {
   const pool = new Map([

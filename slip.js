@@ -81,6 +81,16 @@
     if (c.low.length) warn.push(`${c.low.length} selección(es) con momio menor a 1.30.`);
     if (c.volados.length) warn.push(`${c.volados.length} volado(s) (45–55%): son los que tumban tickets.`);
     if (c.sameMatch) warn.push('Hay selecciones del mismo partido: se mueven juntas, la probabilidad real puede ser distinta.');
+    // Colchón de sorpresas: los favoritos también pierden.
+    const favs = S.legs.filter(l => l.p >= 0.6 && l.p < 0.8);
+    if (favs.length >= 2) warn.push(`Colchón de sorpresas: ${favs.length} selecciones entre 60% y 80%. Un favorito de 70% falla 3 de cada 10; con estas, lo normal es fallar ${(favs.reduce((a, l) => a + 1 - l.p, 0)).toFixed(1)}.`);
+    for (const l of S.legs) {
+      const id = l.key.split(':').pop();
+      if ((id === '1' || id === '2') && l.p < 0.75) {
+        const g = POOL.get(l.matchKey), dc = g && g.items.get(`${l.matchKey}:${id === '1' ? '1X' : 'X2'}`);
+        if (dc && dc.p - l.p >= 0.1) warn.push(`${l.label} (${pct(l.p)}): con doble oportunidad "${dc.label}" sube a ${pct(dc.p)}${dc.prov ? `, momio ~${dc.prov.toFixed(2)}` : ''}.`);
+      }
+    }
     if (c.withDft < S.legs.length) warn.push(`${S.legs.length - c.withDft} selección(es) sin momio de Draftea: se calcula con el provisional.`);
     const P = c.prov, R = c.real;
     const evCls = R.ev >= 0 ? 'good' : 'bad';
