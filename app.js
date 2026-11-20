@@ -240,12 +240,15 @@
     const lead = p1 >= px && p1 >= p2 ? 1 : p2 >= px ? -1 : 0;
     const by1 = (res.margins.find(x => x.d === lead) || { p: 0 }).p;
     const resTxt = lead === 0 ? `empate · ${pct(px)}` : `gana ${esc(lead > 0 ? hn : an)} · ${pct(lead > 0 ? p1 : p2)} (por 1 gol: ${pct(by1)})`;
+    // Marcador estimado: redondeo de los goles esperados (p. ej. 1.20–1.76 → 1-2), con la prob. de ese marcador exacto.
+    const rh = Math.round(res.lh), ra = Math.round(res.la);
+    const rp = (M.scoreMatrix(res.lh, res.la)[rh] || [])[ra] || 0;
     $('xslab').textContent = 'goles esperados';
     $('bar3').innerHTML = `<div class="bh" style="width:${p1 * 100}%">${pct(p1)}</div><div class="bd" style="width:${px * 100}%">${pct(px)}</div><div class="ba" style="width:${p2 * 100}%">${pct(p2)}</div>`;
     $('mkt').innerHTML = res.market
       ? `<span>${c.cons ? `Consenso de ${c.cons.books} casas` : 'Casa sin margen'}: ${pct(res.market.probs[0])} · ${pct(res.market.probs[1])} · ${pct(res.market.probs[2])}</span><span>${c.cons ? 'sin margen' : `Margen ${(res.market.margin * 100).toFixed(1)}%`}</span>`
       : '<span>Solo modelo: captura momios de resultado para mezclar con la casa.</span>';
-    $('meta').innerHTML = `<div class="resline">Resultado probable: <b>${resTxt}</b></div>` + '<span class="m">Marcadores exactos más probables:</span> ' + res.topScores.slice(0, 4).map(s => `<span class="pill num">${s.h}-${s.a} ${pct(s.p)}</span>`).join('') + '<span class="m">(un marcador exacto casi nunca pasa de 15–20%; por eso arriba salen seguido 1-1, 1-0 o 0-0)</span>';
+    $('meta').innerHTML = `<div class="resline">Resultado probable: <b>${resTxt}</b></div><div class="resline">Marcador estimado: <b class="num">${rh} - ${ra}</b> · ${pct(rp)} <span class="m">(redondeo de los goles esperados)</span></div>` + '<span class="m">Marcadores exactos más probables:</span> ' + res.topScores.slice(0, 4).map(s => `<span class="pill num">${s.h}-${s.a} ${pct(s.p)}</span>`).join('') + '<span class="m">(un marcador exacto casi nunca pasa de 15–20%; por eso arriba salen seguido 1-1, 1-0 o 0-0)</span>';
     $('motive').innerHTML = [[c.home, c.motH, 'h'], [c.away, c.motA, 'a']].map(([t, m, k]) => m ? `<div class="mot ${k}"><span class="mtag ${m.tag}">${esc(m.label)}</span> <b>${esc(t.short || t.name)}</b> <span>${esc(m.detail)}</span></div>` : '').join('');
 
     renderMarkets(res);
