@@ -145,4 +145,18 @@ t('córners/remates/tarjetas: binomial negativa y mercados', () => {
   assert(mk.expected.corners > 8 && mk.expected.corners < 12, mk.expected.corners);
   assert(mk.find(x => x.group === 'Tarjetas'));
 });
+const C = require('../context.js');
+t('contexto de tabla Liga MX última jornada', () => {
+  const pts = [38, 33, 30, 28, 27, 26, 25, 24, 22, 21, 20, 19, 17, 15, 14, 12, 10, 8];
+  const tab = pts.map((p, i) => ({ teamId: 't' + (i + 1), gp: 16, pts: p }));
+  const c = C.classify(tab, 'mex.1');
+  assert.strictEqual(c.get('t1').tag, 'asegurado');
+  assert.strictEqual(c.get('t6').tag, 'presion');    // defiende liguilla directa
+  assert.strictEqual(c.get('t10').tag, 'presion');   // defiende play-in
+  assert.strictEqual(c.get('t12').tag, 'presion');   // a 2 pts del play-in
+  assert.strictEqual(c.get('t18').tag, 'sin-nada');
+  const early = C.classify(tab.map(x => ({ ...x, gp: 5 })), 'mex.1');
+  assert.strictEqual(early.get('t1').tag, 'normal');
+  assert.strictEqual(C.factor(c.get('t12')), 1.08);
+});
 console.log(`\n${n} pruebas OK`);

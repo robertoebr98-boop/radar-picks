@@ -125,7 +125,9 @@
       const adjH = M.combineAdj(goalsH, sotH.length ? M.adjustedStrength(sotH, hId, oppStrength, avgL) : null);
       const adjA = M.combineAdj(goalsA, sotA.length ? M.adjustedStrength(sotA, aId, oppStrength, avgL) : null);
       const sotTeam = (evs, id) => { let f = 0, a = 0; for (const e of evs) { const h = e.homeId === id; f += h ? e.homeSot : e.awaySot; a += h ? e.awaySot : e.homeSot; } return evs.length ? { n: evs.length, f: f / evs.length, a: a / evs.length } : null; };
+      const cls = window.RadarContext ? window.RadarContext.classify([...st.values()], lg) : new Map();
       S.ctx = {
+        motH: cls.get(hId) || null, motA: cls.get(aId) || null,
         adjH, adjA, cons, conv, sotStatsH: sotTeam(sotH, hId), sotStatsA: sotTeam(sotA, aId),
         lg, home, away, st, sth, sta, splH, splA, fixture, sum, h2h: h2h.slice(0, 5),
         avg: M.leagueAverage([...st.values()]),
@@ -192,8 +194,8 @@
     const ppgH = c.sth.gp ? c.sth.pts / c.sth.gp : 0, ppgA = c.sta.gp ? c.sta.pts / c.sta.gp : 0;
     const inp = {
       avg: c.avg,
-      home: { team: c.sth, split: c.splH.home, form: M.formFactor(l5h.map(x => x.result), ppgH), bajas: bajasPct('home'), adj: c.adjH },
-      away: { team: c.sta, split: c.splA.away, form: M.formFactor(l5a.map(x => x.result), ppgA), bajas: bajasPct('away'), adj: c.adjA },
+      home: { motiveF: window.RadarContext ? window.RadarContext.factor(c.motH) : 1, team: c.sth, split: c.splH.home, form: M.formFactor(l5h.map(x => x.result), ppgH), bajas: bajasPct('home'), adj: c.adjH },
+      away: { motiveF: window.RadarContext ? window.RadarContext.factor(c.motA) : 1, team: c.sta, split: c.splA.away, form: M.formFactor(l5a.map(x => x.result), ppgA), bajas: bajasPct('away'), adj: c.adjA },
     };
     const o = S.odds;
     let market = (o['1'] && o['X'] && o['2']) ? { odds1: o['1'], oddsX: o['X'], odds2: o['2'], over25: o['O2.5'], under25: o['U2.5'] } : null;
@@ -227,6 +229,7 @@
       ? `<span>${c.cons ? `Consenso de ${c.cons.books} casas` : 'Casa sin margen'}: ${pct(res.market.probs[0])} · ${pct(res.market.probs[1])} · ${pct(res.market.probs[2])}</span><span>${c.cons ? 'sin margen' : `Margen ${(res.market.margin * 100).toFixed(1)}%`}</span>`
       : '<span>Solo modelo: captura momios de resultado para mezclar con la casa.</span>';
     $('meta').innerHTML = res.topScores.slice(1, 5).map(s => `<span class="pill num">${s.h}-${s.a} ${pct(s.p)}</span>`).join('');
+    $('motive').innerHTML = [[c.home, c.motH, 'h'], [c.away, c.motA, 'a']].map(([t, m, k]) => m ? `<div class="mot ${k}"><span class="mtag ${m.tag}">${esc(m.label)}</span> <b>${esc(t.short || t.name)}</b> <span>${esc(m.detail)}</span></div>` : '').join('');
 
     renderMarkets(res);
     renderVerdict(res, inp);
@@ -305,6 +308,12 @@
     const conf = minGp >= 10 && res.market ? 'Confianza media-alta' : minGp >= 6 ? 'Confianza media' : 'Confianza baja (pocos partidos)';
     const notes = [conf, res.market ? 'modelo mezclado con la casa' : 'sin momios de resultado: solo modelo, no apuestes por valor'];
     if (inp.home.bajas || inp.away.bajas) notes.push(`bajas: ${c.home.short || c.home.name} -${inp.home.bajas.toFixed(0)}%, ${c.away.short || c.away.name} -${inp.away.bajas.toFixed(0)}%`);
+    for (const [t, m] of [[c.home, c.motH], [c.away, c.motA]]) {
+      if (!m) continue;
+      if (m.tag === 'asegurado') notes.push(`${t.short || t.name} ya está clasificado: puede rotar titulares, cuidado con patas a su favor`);
+      if (m.tag === 'sin-nada') notes.push(`${t.short || t.name} no se juega nada`);
+      if (m.tag === 'presion') notes.push(`${t.short || t.name} ${m.detail.split(' · ')[1] || 'se juega algo'}: el modelo le sube 8% el ataque`);
+    }
     notes.push('patas del mismo partido están correlacionadas: combina con otro partido');
     $('vnote').textContent = notes.join(' · ') + '.';
   }
@@ -389,6 +398,7 @@
       ['Remates a puerta por partido (visita): a favor / en contra', c.sotStatsA ? `${c.sotStatsA.f.toFixed(1)} / ${c.sotStatsA.a.toFixed(1)} · ${c.sotStatsA.n} partidos` : 'sin datos'],
       ['Goles por remate a puerta en la liga', c.conv ? c.conv.toFixed(2) : '-'],
       ['Momios usados para mezclar', c.cons ? `consenso de ${c.cons.books} casas` : S.odds['1'] ? 'los capturados / ESPN' : 'ninguno'],
+      ['Contexto de tabla (local / visita)', `${c.motH ? c.motH.label : '-'} / ${c.motA ? c.motA.label : '-'}`],
       ['Forma local / visita', `${f2(inp.home.formUsed ?? inp.home.form)} / ${f2(inp.away.formUsed ?? inp.away.form)}`],
       ['Bajas local / visita', `${inp.home.bajas.toFixed(0)}% / ${inp.away.bajas.toFixed(0)}%`],
       ['Goles esperados solo modelo', `${f2(b.lh)} - ${f2(b.la)}`],

@@ -15,6 +15,7 @@ function readCsv(f) {
 
 const LEGS = [['1X', (h, a) => h >= a], ['X2', (h, a) => a >= h], ['12', (h, a) => h !== a], ['O1.5', (h, a) => h + a >= 2], ['O2.5', (h, a) => h + a >= 3], ['U2.5', (h, a) => h + a <= 2], ['U3.5', (h, a) => h + a <= 3], ['BTTS', (h, a) => h > 0 && a > 0], ['NBTTS', (h, a) => !(h > 0 && a > 0)]];
 let CAL = null;
+const LGID = { 'premier-league': 'eng.1', 'la-liga': 'esp.1', 'serie-a': 'ita.1', 'bundesliga': 'ger.1', 'ligue-1': 'fra.1' };
 function evaluate(seasons, opt) {
   let brier = 0, ll = 0, n = 0;
   CAL = { '0.60-0.70': [0, 0, 0], '0.70-0.80': [0, 0, 0], '0.80-0.90': [0, 0, 0], '0.90+': [0, 0, 0] };
@@ -22,8 +23,8 @@ function evaluate(seasons, opt) {
     const prev = opt.usePrev ? s.prev : null;
     const hist = [];
     for (const m of s.matches) {
-      const pred = predict(hist, m, opt, prev);
-      if (pred) {
+      const pred = predict(hist, m, { ...opt, lgId: LGID[s.lg] }, prev);
+      if (pred && (!opt.onlyLate || m._late)) {
         const o = m.hg > m.ag ? 0 : m.hg === m.ag ? 1 : 2;
         const p = [pred.p1, pred.px, pred.p2];
         brier += p.reduce((acc, q, i) => acc + (q - (i === o ? 1 : 0)) ** 2, 0);
@@ -80,7 +81,16 @@ function predict(hist, m, opt, prev) {
   const saved = { ...M.CFG };
   Object.assign(M.CFG, opt.cfg || {});
   const inp = { avg, home: side(m.home, th), away: side(m.away, ta) };
-  const { lh, la } = M.expectedGoals(inp);
+  let { lh, la } = M.expectedGoals(inp);
+  if (opt.ctx) {
+    const C = require('../context.js');
+    const rows = [...t.entries()].map(([id, x]) => ({ teamId: id, gp: x.gp, pts: x.pts, gd: x.gf - x.ga }));
+    const cls = C.classify(rows, opt.lgId, opt.rules);
+    const f = c => c ? (opt.ctx[c.motivation] || 1) : 1;
+    const ch = cls.get(m.home), ca = cls.get(m.away);
+    lh *= f(ch); la *= f(ca);
+    if (opt.onlyLate) m._late = !!((ch && ch.motivation !== 'normal') || (ca && ca.motivation !== 'normal'));
+  }
   const mat = M.scoreMatrix(lh, la);
   Object.assign(M.CFG, saved);
   const p1 = M.sumWhere(mat, (h, a) => h > a), px = M.sumWhere(mat, (h, a) => h === a);

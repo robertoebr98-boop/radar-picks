@@ -49,3 +49,18 @@ Tarjetas
 ```
 
 Córners necesitó más dispersión (1.8) porque varían mucho de partido a partido. Tarjetas usa el promedio de la liga ajustado por faltas: ESPN no da tarjetas por partido.
+
+## Contexto de tabla (motivación)
+
+2,357 partidos del último cuarto de temporada donde al menos un equipo ya estaba clasificado, sin nada en juego o peleando una línea (Champions, Europa, descenso).
+
+```
+sin ajuste                          Brier 0.5927
+"relajado" ataca 5% menos           Brier 0.5929  (empeora)
+"relajado" ataca 10% menos          Brier 0.5933  (empeora)
+quien se juega algo ataca 8% más    Brier 0.5921  (mejora poco)
+```
+
+- Los equipos ya clasificados o sin nada en juego **no** meten menos goles; sus partidos tienden a ser más abiertos. Por eso no se les baja el ataque.
+- A quien se juega algo se le sube 8% el ataque. Mejora poco (0.1%); la etiqueta sirve más como aviso (posibles rotaciones) que como ajuste.
+- Liga MX no está en estos datos: sus reglas (6 directos, 7-10 play-in) se aplican igual.

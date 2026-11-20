@@ -25,14 +25,16 @@
   function formArr(str) { return String(str || '').toUpperCase().replace(/[^WDL]/g, '').split('').slice(-5); }
 
   // Analiza un partido de fútbol solo con tabla + forma + momios del calendario (2 llamadas por liga).
-  function soccerMatch(ev, st, avg, cons) {
+  function soccerMatch(ev, st, avg, cons, cls) {
+    const C = root.RadarContext || (typeof require !== 'undefined' ? require('./context.js') : null);
+    const motH = cls ? cls.get(ev.homeId) || null : null, motA = cls ? cls.get(ev.awayId) || null : null;
     const th = st.get(ev.homeId), ta = st.get(ev.awayId);
     if (!th || !ta || !th.gp || !ta.gp) return null;
     const odds = decOdds(ev.odds, false);
     const inp = {
       avg,
-      home: { team: th, form: M.formFactor(formArr(ev.homeForm), th.pts / th.gp) },
-      away: { team: ta, form: M.formFactor(formArr(ev.awayForm), ta.pts / ta.gp) },
+      home: { team: th, form: M.formFactor(formArr(ev.homeForm), th.pts / th.gp), motiveF: C ? C.factor(motH) : 1 },
+      away: { team: ta, form: M.formFactor(formArr(ev.awayForm), ta.pts / ta.gp), motiveF: C ? C.factor(motA) : 1 },
     };
     let market = odds['1'] && odds['X'] && odds['2'] ? { odds1: odds['1'], oddsX: odds['X'], odds2: odds['2'], over25: odds['O2.5'], under25: odds['U2.5'] } : null;
     if (cons) {
@@ -50,7 +52,7 @@
     let safe = winner;
     if (winner.p < 0.5) safe = winner.id === '2' ? { id: 'X2', label: by('X2').label, p: by('X2').p } : { id: '1X', label: by('1X').label, p: by('1X').p };
     const legs = res.markets.filter(m => SOCCER_LEG_IDS.includes(m.id)).map(m => legOf(m, odds[m.id]));
-    return { ev, res, odds, winner, safe, legs, hasMarket: !!market, cons: cons || null, top: res.topScores[0] };
+    return { ev, res, odds, winner, safe, legs, hasMarket: !!market, cons: cons || null, top: res.topScores[0], motH, motA };
   }
 
   function legOf(m, odd) {
@@ -159,10 +161,12 @@
           if (evs.length) {
             const st = await D.standings(lg);
             const avg = M.leagueAverage([...st.values()]);
+            const Cx = root.RadarContext || (typeof require !== 'undefined' ? require('./context.js') : null);
+            const cls = Cx ? Cx.classify([...st.values()], lg) : null;
             const name = (D.LEAGUES.find(l => l.id === lg) || {}).name || lg;
             for (const e of evs) {
               const cons = D.consensus ? await D.consensus(lg, e.homeName, e.awayName, e.date).catch(() => null) : null;
-              const r = soccerMatch(e, st, avg, cons);
+              const r = soccerMatch(e, st, avg, cons, cls);
               out.push(r ? { league: name, lg, ...r } : { league: name, lg, ev: e, legs: [], winner: null, noData: true });
             }
           }

@@ -175,8 +175,8 @@
     // La baja defensiva rival sube un poco tu ataque (mitad del efecto).
     const bhDef = 1 + (inp.away.bajasDef || 0) / 200;
     const baDef = 1 + (inp.home.bajasDef || 0) / 200;
-    const lh = inp.avg * CFG.HFA_HOME * sh.att * sa.def * fh * bh * bhDef;
-    const la = inp.avg * CFG.HFA_AWAY * sa.att * sh.def * fa * ba * baDef;
+    const lh = inp.avg * CFG.HFA_HOME * sh.att * sa.def * fh * bh * bhDef * (inp.home.motiveF || 1);
+    const la = inp.avg * CFG.HFA_AWAY * sa.att * sh.def * fa * ba * baDef * (inp.away.motiveF || 1);
     return { lh: clampL(lh), la: clampL(la), sh, sa };
   }
 

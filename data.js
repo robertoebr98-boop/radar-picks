@@ -97,7 +97,7 @@
         out.set(String(e.team.id), {
           teamId: String(e.team.id), name: e.team.displayName, gp,
           gf: s.pointsFor || 0, ga: s.pointsAgainst || 0, w, d: dr, l,
-          pts: s.points != null ? s.points : 3 * w + dr, rank: s.rank || null, group: g.name || '',
+          pts: s.points != null ? s.points : 3 * w + dr, rank: s.rank || null, group: g.name || '', gd: s.pointDifferential != null ? s.pointDifferential : (s.pointsFor || 0) - (s.pointsAgainst || 0),
         });
       }
     }

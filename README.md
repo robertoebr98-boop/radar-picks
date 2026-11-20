@@ -18,7 +18,11 @@ Toca + en cualquier mercado, en el ticket sugerido o en los picks con valor. Col
 ## Mis tickets
 Guarda el ticket de la calculadora (nombre, patas, momios, monto, pago) en este navegador. Abrir, marcar ganado/perdido/pendiente, borrar, balance. Exportar/Importar archivo para pasarlos entre celular y PC.
 
+## Contexto de tabla
+Cada equipo lleva etiqueta: Ya clasificado / Se juega algo / Nada en juego (solo en el último cuarto de la temporada). Quien se juega algo recibe +8% de ataque (backtest). Ya clasificado = aviso de posible rotación.
+
 ## Archivos
+- `context.js`: contexto de tabla.
 - `saved.js`: Mis tickets.
 - `slip.js`: calculadora de ticket.
 - `day.js`, `dayui.js`: pronóstico del día.

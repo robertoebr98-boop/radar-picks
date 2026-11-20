@@ -57,6 +57,13 @@
   }
   function btn(x) { return window.RadarSlipBtn ? window.RadarSlipBtn(legOf(x)) : ''; }
 
+  // Etiquetas de contexto de tabla (solo cuando hay algo que decir).
+  function motLine(m) {
+    const parts = [[m.ev.homeName, m.motH], [m.ev.awayName, m.motA]].filter(([, x]) => x && x.tag !== 'normal')
+      .map(([n, x]) => `<span class="mtag ${x.tag}">${esc(Y.shortName(n))}: ${esc(x.label)}</span>`);
+    return parts.length ? `<br><span class="mline">${parts.join(' ')}</span>` : '';
+  }
+
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
   let SHOWN = [];
@@ -117,7 +124,7 @@
     if (!r.matches.length) html += '<p class="note">Ya no quedan partidos por empezar ese día. Abajo ves cómo le fue al modelo.</p>';
     html += `<div class="tk"><h3>Ticket sugerido · ${t.legs.length} patas · solo partidos por empezar</h3>`;
     if (t.legs.length) {
-      html += t.legs.map(x => `<div class="leg"><span><b>${esc(x.leg.label)}</b><br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)} · ${hour(x.match.ev.date)}</span></span>
+      html += t.legs.map(x => `<div class="leg"><span><b>${esc(x.leg.label)}</b><br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)} · ${hour(x.match.ev.date)}</span>${motLine(x.match)}</span>
         <span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'pide ≥ ' + f2(x.leg.minNeeded)}</span></span>${btn(x)}</div>`).join('');
       html += `<button class="btn ghost sm" id="addall">Pasar el ticket sugerido a la calculadora</button>`;
       html += `<div class="sum"><span>Prob. de acertar todo: <b class="num">${pct(t.p)}</b></span><span>Momio total aprox.: <b class="num">${f2(t.odd)}</b></span></div>
@@ -142,7 +149,7 @@
       const clickable = !m.us && !m.noData;
       const idx = SHOWN.push(m) - 1;
       html += `<div class="dmw"><button class="dm" ${clickable ? `data-lg="${m.lg}" data-h="${m.ev.homeId}" data-a="${m.ev.awayId}"` : 'disabled'}>
-        <span><b>${matchTitle(m)}</b> <span class="m">${hour(m.ev.date)}</span><br><span class="m">${sub}</span></span><span style="text-align:right">${right}</span></button>
+        <span><b>${matchTitle(m)}</b> <span class="m">${hour(m.ev.date)}</span><br><span class="m">${sub}</span>${motLine(m)}</span><span style="text-align:right">${right}</span></button>
         ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}</div>`;
     }
     if ((r.live || []).length) {
