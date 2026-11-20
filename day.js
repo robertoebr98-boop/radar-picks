@@ -76,7 +76,7 @@
 
   function shortName(n) { return String(n || '').replace(/^(FC|CF|AC|AS|SC|SV|1\. FC|TSG|VfB|RB)\s+/, '').replace(/\s+(FC|CF|UANL)$/, ''); }
 
-  // Elige la mejor pata de cada partido (una por partido: patas del mismo partido se mueven juntas).
+  // Elige la mejor selección de cada partido (una por partido: selecciones del mismo partido se mueven juntas).
   function bestLeg(match, rules = TICKET) {
     const ok = match.legs.filter(l => l.tag !== 'volado' && l.tag !== 'momio-bajo' && l.est >= TICKET.MIN_ODD && l.p >= rules.MIN_P);
     if (!ok.length) return null;
@@ -104,7 +104,7 @@
     return out.sort((a, b) => b.leg.ev - a.leg.ev).slice(0, 10);
   }
 
-  // ¿Cómo le fue al modelo hoy? Revisa la pata que habría sugerido en cada partido ya jugado.
+  // ¿Cómo le fue al modelo hoy? Revisa la selección que habría sugerido en cada partido ya jugado.
   function reviewPlayed(played) {
     const defs = M.marketDefs('L', 'V');
     const fnOf = id => (defs.find(d => d.id === id) || {}).fn;
@@ -134,12 +134,12 @@
     if (!review || review.n < 3) return r;
     const gap = review.expected - review.rate;
     if (gap > 0.15 || review.surprises.length >= 3) {
-      return { ...r, MIN_P: 0.72, MAX_LEGS: 4, mode: 'defensivo', why: `Día de sorpresas: acertó ${review.hits} de ${review.n} patas (esperaba ${(review.expected * 100).toFixed(0)}%) y ${review.surprises.length} favorito(s) cayeron. Ticket corto y solo patas ≥ 72%.` };
+      return { ...r, MIN_P: 0.72, MAX_LEGS: 4, mode: 'defensivo', why: `Día de sorpresas: acertó ${review.hits} de ${review.n} selecciones (esperaba ${(review.expected * 100).toFixed(0)}%) y ${review.surprises.length} favorito(s) cayeron. Ticket corto y solo selecciones ≥ 72%.` };
     }
     if (gap > 0.05) {
-      return { ...r, MIN_P: 0.67, MAX_LEGS: 6, mode: 'cauteloso', why: `Hoy acertó ${review.hits} de ${review.n} patas, un poco menos de lo esperado. Patas ≥ 67% y máximo 6.` };
+      return { ...r, MIN_P: 0.67, MAX_LEGS: 6, mode: 'cauteloso', why: `Hoy acertó ${review.hits} de ${review.n} selecciones, un poco menos de lo esperado. Selecciones ≥ 67% y máximo 6.` };
     }
-    return { ...r, mode: 'normal', why: `Hoy el modelo va bien: ${review.hits} de ${review.n} patas acertadas (esperaba ${(review.expected * 100).toFixed(0)}%). Reglas normales.` };
+    return { ...r, mode: 'normal', why: `Hoy el modelo va bien: ${review.hits} de ${review.n} selecciones acertadas (esperaba ${(review.expected * 100).toFixed(0)}%). Reglas normales.` };
   }
 
   function ymd(dateStr) { return String(dateStr).replace(/-/g, ''); }

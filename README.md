@@ -5,7 +5,7 @@ Escribe el partido ("Tigres vs América") y la página trae tabla, forma de los 
 **Costo: $0.** Datos públicos de ESPN (sin API key), modelo propio en JavaScript (sin IA), hosting gratis en Vercel.
 
 ## Pronóstico del día
-Elige fecha y liga (o todas): analiza cada partido con tabla + forma + momios de ESPN, da el ganador probable y arma un ticket sugerido (una pata por partido, prob ≥ 62%, momio ≥ 1.30, sin volados, máx 10). NBA y NFL: probabilidad de la casa sin margen.
+Elige fecha y liga (o todas): analiza cada partido con tabla + forma + momios de ESPN, da el ganador probable y arma un ticket sugerido (una selección por partido, prob ≥ 62%, momio ≥ 1.30, sin volados, máx 10). NBA y NFL: probabilidad de la casa sin margen.
 
 ## Más fuentes (gratis)
 - **Remates a puerta** por partido: calendario de ESPN (automático).
@@ -16,7 +16,7 @@ Elige fecha y liga (o todas): analiza cada partido con tabla + forma + momios de
 Toca + en cualquier mercado, en el ticket sugerido o en los picks con valor. Columna provisional automática + columna Draftea. Al recargar la página todo arranca limpio (ticket, momios capturados, bajas); solo se recuerdan la liga y el tema.
 
 ## Mis tickets
-Guarda el ticket de la calculadora (nombre, patas, momios, monto, pago) en este navegador. Abrir, marcar ganado/perdido/pendiente, borrar, balance. Exportar/Importar archivo para pasarlos entre celular y PC.
+Guarda el ticket de la calculadora (nombre, selecciones, momios, monto, pago) en este navegador. Abrir, marcar ganado/perdido/pendiente, borrar, balance. Exportar/Importar archivo para pasarlos entre celular y PC.
 
 ## Contexto de tabla
 Cada equipo lleva etiqueta: Ya clasificado / Se juega algo / Nada en juego (solo en el último cuarto de la temporada). Quien se juega algo recibe +8% de ataque (backtest). Ya clasificado = aviso de posible rotación.

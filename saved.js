@@ -19,7 +19,7 @@
 
   function saveCurrent() {
     const snap = window.RadarSlip.snapshot();
-    if (!snap.legs.length) { $('savedmsg').innerHTML = '<p class="note">El ticket está vacío: agrega patas con +.</p>'; return; }
+    if (!snap.legs.length) { $('savedmsg').innerHTML = '<p class="note">El ticket está vacío: agrega selecciones con +.</p>'; return; }
     const name = ($('savename').value || '').trim() || `Ticket ${fmt(Date.now())}`;
     const c = window.RadarSlip.calc();
     list.unshift({
@@ -72,7 +72,7 @@
       const legs = open ? `<div class="svlegs">${t.legs.map(l => `<div class="svleg"><span>${esc(l.label)}<br><span class="m">${esc(l.match)} · modelo ${Math.round((l.p || 0) * 100)}%</span></span><span class="num">${l.dft ? 'Draftea ' + (+l.dft).toFixed(2) : 'prov. ' + (l.prov ? (+l.prov).toFixed(2) : '-')}</span></div>`).join('')}</div>` : '';
       return `<div class="sv">
         <button class="svh" data-toggle="${t.id}" aria-expanded="${open}">
-          <span><b>${esc(t.name)}</b><br><span class="m">${fmt(t.createdAt)} · ${t.legs.length} patas · momio ${(+t.odd || 0).toFixed(2)} · ${money(+t.stake)} → ${money(+t.payout)}</span></span>
+          <span><b>${esc(t.name)}</b><br><span class="m">${fmt(t.createdAt)} · ${t.legs.length} selecciones · momio ${(+t.odd || 0).toFixed(2)} · ${money(+t.stake)} → ${money(+t.payout)}</span></span>
           <span class="st ${cls}">${esc(t.status)}</span>
         </button>
         ${legs}

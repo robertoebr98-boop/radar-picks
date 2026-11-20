@@ -310,11 +310,11 @@
     if (inp.home.bajas || inp.away.bajas) notes.push(`bajas: ${c.home.short || c.home.name} -${inp.home.bajas.toFixed(0)}%, ${c.away.short || c.away.name} -${inp.away.bajas.toFixed(0)}%`);
     for (const [t, m] of [[c.home, c.motH], [c.away, c.motA]]) {
       if (!m) continue;
-      if (m.tag === 'asegurado') notes.push(`${t.short || t.name} ya está clasificado: puede rotar titulares, cuidado con patas a su favor`);
+      if (m.tag === 'asegurado') notes.push(`${t.short || t.name} ya está clasificado: puede rotar titulares, cuidado con selecciones a su favor`);
       if (m.tag === 'sin-nada') notes.push(`${t.short || t.name} no se juega nada`);
       if (m.tag === 'presion') notes.push(`${t.short || t.name} ${m.detail.split(' · ')[1] || 'se juega algo'}: el modelo le sube 8% el ataque`);
     }
-    notes.push('patas del mismo partido están correlacionadas: combina con otro partido');
+    notes.push('selecciones del mismo partido están correlacionadas: combina con otro partido');
     $('vnote').textContent = notes.join(' · ') + '.';
   }
 
