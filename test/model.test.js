@@ -80,6 +80,19 @@ t('lo reciente pesa más', () => {
   const flat = (4 * 3) / (14 * 1.4 * 1.1);
   assert(a.att > flat, `${a.att} ${flat}`);
 });
+t('remates a puerta del calendario de ESPN', () => {
+  const ev = { id: '1', date: '2026-11-08T14:30Z', competitions: [{ status: { type: { completed: true } }, competitors: [
+    { id: '122', homeAway: 'home', score: '1', team: { id: '122', displayName: 'FC Cologne' }, statistics: [{ name: 'shotsOnTarget', displayValue: '6' }, { name: 'totalShots', displayValue: '12' }] },
+    { id: '131', homeAway: 'away', score: '2', team: { id: '131', displayName: 'Bayer Leverkusen' }, statistics: [{ name: 'shotsOnTarget', displayValue: '8' }] }] }] };
+  const e = D.parseEvent(ev);
+  assert.strictEqual(e.homeSot, 6); assert.strictEqual(e.awaySot, 8); assert.strictEqual(e.hs, 1);
+  assert.strictEqual(D.espnDay('2026-11-01T02:00Z'), '20261031');
+});
+t('combinar goles y remates', () => {
+  const c = M.combineAdj({ att: 1, def: 1, n: 10 }, { att: 1.5, def: 0.5, n: 10 });
+  assert(Math.abs(c.att - (0.2 + 0.8 * 1.5)) < 1e-9);
+  assert.strictEqual(M.combineAdj({ att: 1, def: 1, n: 10 }, { att: 2, def: 2, n: 2 }).att, 1);
+});
 
 // ---- Pronóstico del día ----
 global.RadarModel = M; global.RadarData = D;

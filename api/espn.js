@@ -18,7 +18,10 @@ module.exports = async function handler(req, res) {
     res.setHeader('content-type', 'application/json; charset=utf-8');
     // Partidos y momios cambian rápido: 1 min. Tabla y equipos: 5 min. "fresh" = sin caché.
     const live = /scoreboard|summary/.test(path) || rest.fixture;
-    res.setHeader('cache-control', fresh ? 'no-store' : live ? 's-maxage=60, stale-while-revalidate=60' : 's-maxage=300, stale-while-revalidate=300');
+    // Días ya jugados no cambian: caché de 6 horas.
+    const today = new Date(Date.now() - 864e5).toISOString().slice(0, 10).replace(/-/g, ''); // margen de 1 día por husos horarios
+    const past = /scoreboard/.test(path) && /^\d{8}$/.test(rest.dates || '') && rest.dates < today;
+    res.setHeader('cache-control', fresh ? 'no-store' : past ? 's-maxage=21600, stale-while-revalidate=3600' : live ? 's-maxage=60, stale-while-revalidate=60' : 's-maxage=300, stale-while-revalidate=300');
     res.status(r.status).send(body);
   } catch (e) {
     res.status(502).json({ error: 'ESPN no respondió', detail: String(e) });

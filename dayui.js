@@ -69,7 +69,7 @@
       const w = m.winner;
       const right = w ? `<b class="num">${pct(w.p)}</b>` : '<span class="m">sin datos</span>';
       const sub = w
-        ? `${esc(w.label)}${m.safe && m.safe.id !== w.id ? ` · seguro: ${esc(m.safe.label)} ${pct(m.safe.p)}` : ''}${m.top ? ` · marcador ${m.top.h}-${m.top.a}` : ''}${m.hasMarket ? '' : ' · sin momios'}`
+        ? `${esc(w.label)}${m.safe && m.safe.id !== w.id ? ` · seguro: ${esc(m.safe.label)} ${pct(m.safe.p)}` : ''}${m.top ? ` · marcador ${m.top.h}-${m.top.a}` : ''}${m.cons ? ` · consenso ${m.cons.books} casas` : m.hasMarket ? '' : ' · sin momios'}`
         : (m.us ? 'ESPN aún no publica momios' : 'equipo sin partidos en la tabla');
       const clickable = !m.us && !m.noData;
       html += `<button class="dm" ${clickable ? `data-lg="${m.lg}" data-h="${m.ev.homeId}" data-a="${m.ev.awayId}"` : 'disabled'}>

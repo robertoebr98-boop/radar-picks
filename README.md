@@ -7,6 +7,11 @@ Escribe el partido ("Tigres vs América") y la página trae tabla, forma de los 
 ## Pronóstico del día
 Elige fecha y liga (o todas): analiza cada partido con tabla + forma + momios de ESPN, da el ganador probable y arma un ticket sugerido (una pata por partido, prob ≥ 62%, momio ≥ 1.30, sin volados, máx 10). NBA y NFL: probabilidad de la casa sin margen.
 
+## Más fuentes (gratis)
+- **Remates a puerta** por partido: calendario de ESPN (automático).
+- **Consenso de varias casas** (opcional): crea una key gratis en the-odds-api.com y agrégala en Vercel → Settings → Environment Variables como `ODDS_API_KEY`, luego Redeploy. Sin key, la página usa los momios de ESPN.
+- **Backtest:** `backtest/RESULTADOS.md`.
+
 ## Archivos
 - `day.js`, `dayui.js`: pronóstico del día.
 - `index.html`, `app.js`: la página.

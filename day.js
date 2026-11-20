@@ -25,7 +25,7 @@
   function formArr(str) { return String(str || '').toUpperCase().replace(/[^WDL]/g, '').split('').slice(-5); }
 
   // Analiza un partido de fútbol solo con tabla + forma + momios del calendario (2 llamadas por liga).
-  function soccerMatch(ev, st, avg) {
+  function soccerMatch(ev, st, avg, cons) {
     const th = st.get(ev.homeId), ta = st.get(ev.awayId);
     if (!th || !ta || !th.gp || !ta.gp) return null;
     const odds = decOdds(ev.odds, false);
@@ -34,7 +34,11 @@
       home: { team: th, form: M.formFactor(formArr(ev.homeForm), th.pts / th.gp) },
       away: { team: ta, form: M.formFactor(formArr(ev.awayForm), ta.pts / ta.gp) },
     };
-    const market = odds['1'] && odds['X'] && odds['2'] ? { odds1: odds['1'], oddsX: odds['X'], odds2: odds['2'], over25: odds['O2.5'], under25: odds['U2.5'] } : null;
+    let market = odds['1'] && odds['X'] && odds['2'] ? { odds1: odds['1'], oddsX: odds['X'], odds2: odds['2'], over25: odds['O2.5'], under25: odds['U2.5'] } : null;
+    if (cons) {
+      market = { odds1: 1 / cons.probs[0], oddsX: 1 / cons.probs[1], odds2: 1 / cons.probs[2] };
+      if (cons.over25) { market.over25 = 1 / cons.over25; market.under25 = 1 / (1 - cons.over25); }
+    }
     const res = M.analyze(inp, market, { home: shortName(ev.homeName), away: shortName(ev.awayName) });
     const by = id => res.markets.find(m => m.id === id);
     const p1 = by('1').p, px = by('X').p, p2 = by('2').p;
@@ -46,7 +50,7 @@
     let safe = winner;
     if (winner.p < 0.5) safe = winner.id === '2' ? { id: 'X2', label: by('X2').label, p: by('X2').p } : { id: '1X', label: by('1X').label, p: by('1X').p };
     const legs = res.markets.filter(m => SOCCER_LEG_IDS.includes(m.id)).map(m => legOf(m, odds[m.id]));
-    return { ev, res, odds, winner, safe, legs, hasMarket: !!market, top: res.topScores[0] };
+    return { ev, res, odds, winner, safe, legs, hasMarket: !!market, cons: cons || null, top: res.topScores[0] };
   }
 
   function legOf(m, odd) {
@@ -119,7 +123,8 @@
             const avg = M.leagueAverage([...st.values()]);
             const name = (D.LEAGUES.find(l => l.id === lg) || {}).name || lg;
             for (const e of evs) {
-              const r = soccerMatch(e, st, avg);
+              const cons = D.consensus ? await D.consensus(lg, e.homeName, e.awayName, e.date).catch(() => null) : null;
+              const r = soccerMatch(e, st, avg, cons);
               out.push(r ? { league: name, lg, ...r } : { league: name, lg, ev: e, legs: [], winner: null, noData: true });
             }
           }

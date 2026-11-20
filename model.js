@@ -17,9 +17,11 @@
     DOBLETE_PROB: 0.70,
     MIN_ODD: 1.30,
     VALUE_EV: 1.05,
-    HALF_LIFE: 8,        // cada 8 partidos atrás, el partido pesa la mitad
-    ADJ_PRIOR_GOALS: 2,  // goles 'fantasma' para no sobrerreaccionar
-    ADJ_WEIGHT: 0.5,     // mezcla fuerza ajustada por rival vs tabla
+    // Ajustados con backtest de ~8,000 partidos (backtest/RESULTADOS.md)
+    HALF_LIFE: 30,       // cada 30 partidos atrás, el partido pesa la mitad
+    ADJ_PRIOR_GOALS: 1,  // goles 'fantasma' para no sobrerreaccionar
+    ADJ_WEIGHT: 0.75,    // 75% fuerza ajustada por rival, 25% tabla
+    ADJ_SOT: 0.8,        // dentro del ajuste: 80% remates a puerta, 20% goles (si hay remates)
   };
 
   function poissonPmf(k, lambda) {
@@ -144,6 +146,13 @@
     return { att: (gf + K) / (expF + K), def: (ga + K) / (expA + K), n };
   }
 
+  // Mezcla la fuerza por goles con la fuerza por remates a puerta (convertidos a goles).
+  function combineAdj(goals, sot) {
+    if (!sot || sot.n < 4) return goals;
+    const w = CFG.ADJ_SOT;
+    return { att: (1 - w) * goals.att + w * sot.att, def: (1 - w) * goals.def + w * sot.def, n: goals.n, sot: sot, goals: goals };
+  }
+
   function expectedGoals(inp) {
     const sh = strength(inp.home.team, inp.avg, inp.home.split, CFG.HFA_HOME);
     const sa = strength(inp.away.team, inp.avg, inp.away.split, CFG.HFA_AWAY);
@@ -157,8 +166,9 @@
         s.adj = adj;
       }
     }
-    if (inp.home.adj && inp.home.adj.n >= 4) fh = Math.sqrt(fh);
-    if (inp.away.adj && inp.away.adj.n >= 4) fa = Math.sqrt(fa);
+    // Con ajuste por rival la forma ya está incluida (el backtest empeora si se suma aparte).
+    if (inp.home.adj && inp.home.adj.n >= 4) fh = 1;
+    if (inp.away.adj && inp.away.adj.n >= 4) fa = 1;
     inp.home.formUsed = fh; inp.away.formUsed = fa;
     const bh = 1 - (inp.home.bajas || 0) / 100;
     const ba = 1 - (inp.away.bajas || 0) / 100;
@@ -266,7 +276,7 @@
     return { tag: 'sin-valor', ev, minNeeded };
   }
 
-  const api = { CFG, adjustedStrength, poissonPmf, scoreMatrix, sumWhere, marketDefs, leagueAverage, strength, formFactor, expectedGoals, americanToDecimal, noVig, fitLambdas, analyze, verdict };
+  const api = { CFG, adjustedStrength, combineAdj, poissonPmf, scoreMatrix, sumWhere, marketDefs, leagueAverage, strength, formFactor, expectedGoals, americanToDecimal, noVig, fitLambdas, analyze, verdict };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarModel = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -251,10 +251,10 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
     <section class="card" aria-label="Método">
       <h2>Cómo calcula</h2>
       <ol class="ev">
-        <li><b>Fuerza contra la liga, ajustada por rival.</b> Mitad tabla (goles a favor y en contra vs promedio de la liga, con peso a local/visita) y mitad partido por partido: cada resultado se ajusta por la calidad del rival y los partidos recientes pesan más (cada 8 partidos atrás pesan la mitad; la temporada pasada cuenta al 60%).</li>
-        <li><b>Forma.</b> Puntos de los últimos 5 contra su promedio de temporada, suavizado (^0.25; a la mitad cuando ya hay ajuste por rival).</li>
+        <li><b>Fuerza ajustada por rival, con remates a puerta.</b> 25% tabla y 75% partido por partido: cada resultado se ajusta por la calidad del rival, los recientes pesan más y los remates a puerta (de ESPN) pesan 80% porque predicen mejor que los goles. Probado con 7,994 partidos: cuando dice 70–80%, pasa 74.6% de las veces.</li>
+        <li><b>Forma.</b> Ya va dentro del peso a partidos recientes; sumarla aparte empeoraba el backtest.</li>
         <li><b>Dixon-Coles.</b> Corrige los marcadores bajos (0-0, 1-0, 1-1) que Poisson subestima.</li>
-        <li><b>La casa pesa la mitad.</b> Si hay momios de resultado, la probabilidad final es 50% modelo + 50% casa sin margen.</li>
+        <li><b>La casa pesa la mitad.</b> Si hay momios, la probabilidad final es 50% modelo + 50% casa sin margen. Con la key de The Odds API usa el consenso de varias casas.</li>
         <li><b>Filtros.</b> Doblete: prob ≥ 70% en el peor caso y momio ≥ 1.30. Valor: prob × momio ≥ 1.05. 45–55% es volado.</li>
       </ol>
       <details>

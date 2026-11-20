@@ -117,11 +117,17 @@
       homeName: home.team?.displayName || '', awayName: away.team?.displayName || '',
       homeLogo: logoOf(home.team), awayLogo: logoOf(away.team),
       hs: num(home.score), as: num(away.score),
+      homeSot: statOf(home, 'shotsOnTarget'), awaySot: statOf(away, 'shotsOnTarget'),
       homeForm: typeof home.form === 'string' ? home.form : '', awayForm: typeof away.form === 'string' ? away.form : '',
       homeAbbr: home.team?.abbreviation || '', awayAbbr: away.team?.abbreviation || '',
       odds: parseOdds((c.odds || [])[0]),
       venue: c.venue?.fullName || '',
     };
+  }
+
+  function statOf(comp, name) {
+    const st = (comp.statistics || []).find(x => x.name === name);
+    return st ? num(st.displayValue ?? st.value) : null;
   }
 
   function parseOdds(o) {
@@ -146,6 +152,79 @@
     if (opts.season) params.season = String(opts.season);
     const d = await get(site(lg, `teams/${teamId}/schedule`), params);
     return { season: d.season?.year || d.requestedSeason?.year || null, events: (d.events || []).map(parseEvent) };
+  }
+
+  // Fecha del calendario de ESPN (hora del este de EU) para un partido.
+  function espnDay(iso) {
+    try {
+      const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso));
+      return p.replace(/-/g, '');
+    } catch (e) { return String(iso).slice(0, 10).replace(/-/g, ''); }
+  }
+
+  // Remates a puerta por partido: vienen en el calendario del día (no en el resumen).
+  // Devuelve todos los partidos terminados de la liga en esas fechas, con goles y remates a puerta.
+  async function matchStats(lg, isoDates) {
+    const days = [...new Set(isoDates.map(espnDay))].slice(0, 40);
+    const out = new Map();
+    for (let i = 0; i < days.length; i += 6) {
+      const chunk = await Promise.all(days.slice(i, i + 6).map(d => get(site(lg, 'scoreboard'), { dates: d }).catch(() => ({ events: [] }))));
+      for (const d of chunk) for (const ev of d.events || []) {
+        const e = parseEvent(ev);
+        if (e.completed && e.hs != null && e.homeSot != null && e.awaySot != null) out.set(e.id, e);
+      }
+    }
+    return out;
+  }
+
+  // Consenso de varias casas (opcional): solo si en Vercel existe ODDS_API_KEY (The Odds API, plan gratis).
+  const ODDS_SPORT = {
+    'mex.1': 'soccer_mexico_ligamx', 'uefa.champions': 'soccer_uefa_champs_league', 'uefa.europa': 'soccer_uefa_europa_league',
+    'eng.1': 'soccer_epl', 'esp.1': 'soccer_spain_la_liga', 'ita.1': 'soccer_italy_serie_a', 'ger.1': 'soccer_germany_bundesliga',
+    'fra.1': 'soccer_france_ligue_one', 'ned.1': 'soccer_netherlands_eredivisie', 'por.1': 'soccer_portugal_primeira_liga',
+    'nba': 'basketball_nba', 'nfl': 'americanfootball_nfl',
+  };
+  const oddsCache = new Map();
+  async function consensusList(lg) {
+    if (DEMO || !ODDS_SPORT[lg]) return null;
+    if (oddsCache.has(lg) && Date.now() - oddsCache.get(lg).t < 10 * 60000) return oddsCache.get(lg).p;
+    const p = fetch(`/api/odds?lg=${encodeURIComponent(lg)}`).then(r => r.ok ? r.json() : null).catch(() => null);
+    oddsCache.set(lg, { p, t: Date.now() });
+    return p;
+  }
+  function sameTeam(a, b) {
+    const A = norm(a), B = norm(b);
+    if (!A || !B) return false;
+    if (A === B || A.includes(B) || B.includes(A)) return true;
+    const wa = A.split(' ').filter(w => w.length >= 4), wb = new Set(B.split(' ').filter(w => w.length >= 4));
+    return wa.some(w => wb.has(w));
+  }
+  async function consensus(lg, homeName, awayName, iso) {
+    const list = await consensusList(lg);
+    if (!Array.isArray(list)) return null;
+    const t = iso ? new Date(iso).getTime() : null;
+    const ev = list.find(e => sameTeam(e.home_team, homeName) && sameTeam(e.away_team, awayName) && (!t || Math.abs(new Date(e.commence_time) - t) < 36 * 3600e3));
+    if (!ev) return null;
+    const p1x2 = [], pOU = [];
+    for (const b of ev.bookmakers || []) {
+      const h2h = (b.markets || []).find(m => m.key === 'h2h');
+      if (h2h) {
+        const pr = n => (h2h.outcomes.find(o => o.name === n) || {}).price;
+        const o = [pr(ev.home_team), pr('Draw'), pr(ev.away_team)];
+        if (o.every(x => x > 1)) { const inv = o.map(x => 1 / x), s = inv.reduce((a, b) => a + b); p1x2.push(inv.map(x => x / s)); }
+        else if (o[0] > 1 && o[2] > 1 && !o[1]) { const inv = [1 / o[0], 1 / o[2]], s = inv[0] + inv[1]; p1x2.push([inv[0] / s, 0, inv[1] / s]); }
+      }
+      const tot = (b.markets || []).find(m => m.key === 'totals');
+      if (tot) {
+        const ov = tot.outcomes.find(o => o.name === 'Over' && o.point === 2.5), un = tot.outcomes.find(o => o.name === 'Under' && o.point === 2.5);
+        if (ov && un) { const a = 1 / ov.price, b2 = 1 / un.price; pOU.push(a / (a + b2)); }
+      }
+    }
+    if (!p1x2.length) return null;
+    const med = arr => { const s = [...arr].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+    const probs = [0, 1, 2].map(i => med(p1x2.map(x => x[i])));
+    const sum = probs.reduce((a, b) => a + b);
+    return { books: p1x2.length, probs: probs.map(x => x / sum), over25: pOU.length ? med(pOU) : null };
   }
 
   function yyyymmdd(dt) { return dt.toISOString().slice(0, 10).replace(/-/g, ''); }
@@ -267,7 +346,7 @@
     return parts.length >= 2 ? [parts[0].trim(), parts.slice(1).join(' ').trim()] : null;
   }
 
-  const api = { LEAGUES, DEMO, get, refresh, state, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
+  const api = { LEAGUES, DEMO, get, refresh, state, espnDay, matchStats, consensus, ODDS_SPORT, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarData = api;
 })(typeof window !== 'undefined' ? window : globalThis);
