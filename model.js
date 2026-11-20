@@ -316,7 +316,11 @@
     const scores = [];
     for (let h = 0; h <= 6; h++) for (let a = 0; a <= 6; a++) scores.push({ h, a, p: m[h][a] });
     scores.sort((x, y) => y.p - x.p);
-    return { base, lh, la, market: mkt, markets, topScores: scores.slice(0, 6) };
+    // Diferencia de goles (local − visita): más útil que un marcador exacto, que casi siempre sale 1-1 o 1-0.
+    const diff = {};
+    for (const s of scores) { const d = Math.max(-3, Math.min(3, s.h - s.a)); diff[d] = (diff[d] || 0) + s.p; }
+    const margins = Object.entries(diff).map(([d, p]) => ({ d: +d, p })).sort((x, y) => y.p - x.p);
+    return { base, lh, la, market: mkt, markets, topScores: scores.slice(0, 6), margins };
   }
 
   // Clasifica un mercado con momio (decimal) capturado.

@@ -72,16 +72,18 @@ select.in{flex:1 1 160px}
 .board .comp{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--board-muted);text-align:center;font-weight:600}
 .teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center}
 .teams img{width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 6px}
-.tname{font-family:var(--f-display);font-weight:700;font-size:clamp(18px,6vw,26px);line-height:1.05;letter-spacing:.01em;hyphens:auto}
+.tname{font-family:var(--f-display);font-weight:700;font-size:clamp(17px,5vw,26px);line-height:1.05;letter-spacing:.01em;hyphens:manual}
 .tname.h{color:var(--home)} .tname.a{color:var(--away)}
 .tsub{font-size:11.5px;color:var(--board-muted);margin-top:4px}
-.xs{font-family:var(--f-num);font-size:28px;font-weight:600;padding:6px 14px;border:1px solid #ffffff22;border-radius:12px;background:#ffffff0d}
+.xs{font-family:var(--f-num);font-size:19px;white-space:nowrap;font-weight:600;padding:6px 14px;border:1px solid #ffffff22;border-radius:12px;background:#ffffff0d}
+.resline{flex-basis:100%;text-align:center;font-size:13px;color:var(--board-fg,inherit)}
+.xsres{text-transform:none;letter-spacing:0;font-size:11.5px;color:var(--board-muted)}
 .xslab{font-size:10.5px;color:var(--board-muted);margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
 .bar3{display:flex;height:30px;border-radius:8px;overflow:hidden;font-family:var(--f-num);font-size:12px;font-weight:600}
 .bar3 div{display:flex;align-items:center;justify-content:center;min-width:0;white-space:nowrap;overflow:hidden}
 .bar3 .bh{background:var(--home);color:#1a1300} .bar3 .bd{background:#3b4a63;color:#fff} .bar3 .ba{background:var(--away);color:#0a1430}
 .mkt{font-size:11.5px;color:var(--board-muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.meta{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+.meta{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:var(--board-muted)}
 .pill{font-size:11px;padding:3px 9px;border-radius:999px;background:#ffffff14;color:var(--board-fg);white-space:nowrap}
 
 /* Veredicto */
@@ -279,7 +281,7 @@ td.addc{width:34px;padding-left:6px}
       <div class="comp" id="comp"></div>
       <div class="teams">
         <div><img id="hl" alt="" onerror="this.classList.add('hidden')"><div class="tname h" id="hn"></div><div class="tsub" id="hs"></div></div>
-        <div><div class="xs num" id="xs">-</div><div class="xslab">más probable</div></div>
+        <div><div class="xs num" id="xs">-</div><div class="xslab" id="xslab">goles esperados</div></div>
         <div><img id="al" alt="" onerror="this.classList.add('hidden')"><div class="tname a" id="an"></div><div class="tsub" id="as"></div></div>
       </div>
       <div class="bar3" id="bar3" aria-label="Probabilidad 1X2"></div>

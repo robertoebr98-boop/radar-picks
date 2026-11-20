@@ -231,15 +231,21 @@
       im.dataset.u = u; im.classList.add('hidden'); im.removeAttribute('src');
       if (u) { im.onload = () => { if (im.dataset.u === u) im.classList.remove('hidden'); }; im.src = u; }
     }
-    $('hs').textContent = `${c.sth.rank ? c.sth.rank + 'º · ' : ''}${c.sth.pts} pts · xG ${f2(res.lh)}`;
-    $('as').textContent = `${c.sta.rank ? c.sta.rank + 'º · ' : ''}${c.sta.pts} pts · xG ${f2(res.la)}`;
-    const top = res.topScores[0];
-    $('xs').textContent = `${top.h}-${top.a}`;
+    $('hs').textContent = `${c.sth.rank ? c.sth.rank + 'º · ' : ''}${c.sth.pts} pts`;
+    $('as').textContent = `${c.sta.rank ? c.sta.rank + 'º · ' : ''}${c.sta.pts} pts`;
+    // Centro del tablero: goles esperados de cada uno (cambian partido a partido) en lugar de un marcador exacto.
+    $('xs').textContent = `${f2(res.lh)} – ${f2(res.la)}`;
+    const hn = c.home.short || c.home.name, an = c.away.short || c.away.name;
+    // Resultado probable = el lado con más probabilidad en el 1X2 y, si es victoria, por cuántos goles.
+    const lead = p1 >= px && p1 >= p2 ? 1 : p2 >= px ? -1 : 0;
+    const by1 = (res.margins.find(x => x.d === lead) || { p: 0 }).p;
+    const resTxt = lead === 0 ? `empate · ${pct(px)}` : `gana ${esc(lead > 0 ? hn : an)} · ${pct(lead > 0 ? p1 : p2)} (por 1 gol: ${pct(by1)})`;
+    $('xslab').textContent = 'goles esperados';
     $('bar3').innerHTML = `<div class="bh" style="width:${p1 * 100}%">${pct(p1)}</div><div class="bd" style="width:${px * 100}%">${pct(px)}</div><div class="ba" style="width:${p2 * 100}%">${pct(p2)}</div>`;
     $('mkt').innerHTML = res.market
       ? `<span>${c.cons ? `Consenso de ${c.cons.books} casas` : 'Casa sin margen'}: ${pct(res.market.probs[0])} · ${pct(res.market.probs[1])} · ${pct(res.market.probs[2])}</span><span>${c.cons ? 'sin margen' : `Margen ${(res.market.margin * 100).toFixed(1)}%`}</span>`
       : '<span>Solo modelo: captura momios de resultado para mezclar con la casa.</span>';
-    $('meta').innerHTML = res.topScores.slice(1, 5).map(s => `<span class="pill num">${s.h}-${s.a} ${pct(s.p)}</span>`).join('');
+    $('meta').innerHTML = `<div class="resline">Resultado probable: <b>${resTxt}</b></div>` + '<span class="m">Marcadores exactos más probables:</span> ' + res.topScores.slice(0, 4).map(s => `<span class="pill num">${s.h}-${s.a} ${pct(s.p)}</span>`).join('') + '<span class="m">(un marcador exacto casi nunca pasa de 15–20%; por eso arriba salen seguido 1-1, 1-0 o 0-0)</span>';
     $('motive').innerHTML = [[c.home, c.motH, 'h'], [c.away, c.motA, 'a']].map(([t, m, k]) => m ? `<div class="mot ${k}"><span class="mtag ${m.tag}">${esc(m.label)}</span> <b>${esc(t.short || t.name)}</b> <span>${esc(m.detail)}</span></div>` : '').join('');
 
     renderMarkets(res);
