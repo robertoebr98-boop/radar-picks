@@ -21,6 +21,8 @@
     HALF_LIFE: 30,       // cada 30 partidos atrás, el partido pesa la mitad
     ADJ_PRIOR_GOALS: 1,  // goles 'fantasma' para no sobrerreaccionar
     ADJ_WEIGHT: 0.75,    // 75% fuerza ajustada por rival, 25% tabla
+    H2H_WEIGHT: 0.10,    // últimos 5 enfrentamientos directos: 10% (backtest 5,621 partidos: mejor que 0, 5, 15, 20 y 30%)
+    H2H_MIN: 3,          // con menos de 3 enfrentamientos no se usa
     ADJ_SOT: 0.8,        // dentro del ajuste: 80% remates a puerta, 20% goles (si hay remates)
   };
 
@@ -177,7 +179,45 @@
     const baDef = 1 + (inp.home.bajasDef || 0) / 200;
     const lh = inp.avg * CFG.HFA_HOME * sh.att * sa.def * fh * bh * bhDef * (inp.home.motiveF || 1);
     const la = inp.avg * CFG.HFA_AWAY * sa.att * sh.def * fa * ba * baDef * (inp.away.motiveF || 1);
-    return { lh: clampL(lh), la: clampL(la), sh, sa };
+    // Enfrentamientos directos: mezcla pequeña con los goles que cada uno le ha metido al otro.
+    let lhF = lh, laF = la;
+    const H = inp.h2h;
+    if (H && H.n >= CFG.H2H_MIN) {
+      const w = CFG.H2H_WEIGHT * Math.min(H.n, 5) / 5;
+      lhF = (1 - w) * lh + w * H.gH; laF = (1 - w) * la + w * H.gA;
+      H.used = w;
+    }
+    return { lh: clampL(lhF), la: clampL(laF), sh, sa };
+  }
+
+  // Resumen de los últimos 5 enfrentamientos: goles de cada equipo (sin importar sede), quién ganó
+  // y, si hay estadísticas, córners, remates y tarjetas promedio por partido.
+  function h2hSummary(games, homeId, statsById) {
+    const g = (games || []).filter(e => e.hs != null && e.as != null).slice(0, 5);
+    if (!g.length) return null;
+    const out = { n: g.length, gH: 0, gA: 0, w: 0, d: 0, l: 0, o25: 0, btts: 0 };
+    const acc = { corners: [], shots: [], sot: [], cards: [] };
+    for (const e of g) {
+      const isH = String(e.homeId) === String(homeId);
+      const mine = isH ? e.hs : e.as, theirs = isH ? e.as : e.hs;
+      out.gH += mine; out.gA += theirs;
+      if (mine > theirs) out.w++; else if (mine < theirs) out.l++; else out.d++;
+      if (e.hs + e.as >= 3) out.o25++;
+      if (e.hs > 0 && e.as > 0) out.btts++;
+      const s = (statsById && statsById.get(String(e.id))) || e;
+      const st = s.stats;
+      if (st && st.home && st.away) {
+        const sum = k => (st.home[k] != null && st.away[k] != null) ? st.home[k] + st.away[k] : null;
+        if (sum('wonCorners') != null) acc.corners.push(sum('wonCorners'));
+        if (sum('totalShots') != null) acc.shots.push(sum('totalShots'));
+        if (sum('shotsOnTarget') != null) acc.sot.push(sum('shotsOnTarget'));
+        const cards = sum('yellowCards') != null ? sum('yellowCards') + (sum('redCards') || 0) : null;
+        if (cards != null) acc.cards.push(cards);
+      }
+    }
+    out.gH /= g.length; out.gA /= g.length;
+    for (const k of Object.keys(acc)) out[k] = acc[k].length ? { avg: acc[k].reduce((a, b) => a + b, 0) / acc[k].length, n: acc[k].length } : null;
+    return out;
   }
 
   function clampL(x) { return Math.min(4.5, Math.max(0.15, x)); }
@@ -276,7 +316,7 @@
     return { tag: 'sin-valor', ev, minNeeded };
   }
 
-  const api = { CFG, adjustedStrength, combineAdj, poissonPmf, scoreMatrix, sumWhere, marketDefs, leagueAverage, strength, formFactor, expectedGoals, americanToDecimal, noVig, fitLambdas, analyze, verdict };
+  const api = { CFG, adjustedStrength, combineAdj, poissonPmf, scoreMatrix, sumWhere, marketDefs, leagueAverage, strength, formFactor, expectedGoals, h2hSummary, americanToDecimal, noVig, fitLambdas, analyze, verdict };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarModel = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -137,6 +137,14 @@
         else note = 'Sin suficientes partidos recientes con estadísticas para córners, remates y tarjetas.';
       } catch (e) { note = 'No pude cargar córners/remates/tarjetas.'; }
     }
+    // Últimos 5 enfrentamientos: contexto (y ya pesan 10% en los goles esperados).
+    let h2hHtml = '';
+    if (m.h2hGames && m.h2hGames.length && D.statsFor) {
+      const sm = await D.statsFor(m.lg, m.h2hGames).catch(() => new Map());
+      const H = window.RadarModel.h2hSummary(m.h2hGames, m.ev.homeId, sm);
+      const av = (x, l) => x ? ` · ${x.avg.toFixed(1)} ${l}` : '';
+      h2hHtml = `<p class="note"><b>Últimos ${H.n} entre ellos:</b> ${esc(name(m.ev.homeName))} ${H.w}G ${H.d}E ${H.l}P · ${(H.gH + H.gA).toFixed(1)} goles por partido · más de 2.5 en ${H.o25}/${H.n} · ambos anotan ${H.btts}/${H.n}${av(H.corners, 'córners')}${av(H.shots, 'remates')}${av(H.cards, 'tarjetas')}.${H.n >= window.RadarModel.CFG.H2H_MIN ? ' Ya pesa 10% en los goles esperados.' : ' Pocos partidos: solo contexto.'}</p>`;
+    } else if (!m.us) h2hHtml = '<p class="note">Sin enfrentamientos recientes en esta liga.</p>';
     const mkKey = `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`, title = `${name(m.ev.homeName)} vs ${name(m.ev.awayName)}`;
     let html = '', g = '';
     for (const x of rows) {
@@ -145,7 +153,7 @@
       const leg = { key: `${mkKey}:${x.id}`, matchKey: mkKey, t: m.ev.date, match: title, label: x.label, p: x.p, prov: +x.prov.toFixed(2), provSrc: x.src };
       html += `<div class="mkr${x.p >= 0.7 ? ' hi' : ''}"><span>${esc(x.label)}${vol ? ' <span class="st vol">volado</span>' : ''}</span><span class="num">${pct(x.p)}</span><span class="num">${f2(x.prov)}<br><span class="m">${esc(x.src)}</span></span>${window.RadarSlipBtn ? window.RadarSlipBtn(leg) : ''}</div>`;
     }
-    panel.innerHTML = `<div class="mkr hd"><span>Mercado</span><span>Prob.</span><span>Momio</span><span></span></div>${html}<p class="note">${esc(note)} "estimado" = momio justo del modelo menos el margen típico de la casa (6% en goles, 8% en córners/tarjetas). Escribe el real de Draftea en la calculadora. En verde, prob ≥ 70%.</p>`;
+    panel.innerHTML = h2hHtml + `<div class="mkr hd"><span>Mercado</span><span>Prob.</span><span>Momio</span><span></span></div>${html}<p class="note">${esc(note)} "estimado" = momio justo del modelo menos el margen típico de la casa (6% en goles, 8% en córners/tarjetas). Escribe el real de Draftea en la calculadora. En verde, prob ≥ 70%.</p>`;
     panel.dataset.done = '1';
     if (window.RadarSlip) window.RadarSlip.refresh();
   }

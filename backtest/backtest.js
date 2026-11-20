@@ -17,19 +17,22 @@ const LEGS = [['1X', (h, a) => h >= a], ['X2', (h, a) => a >= h], ['12', (h, a) 
 let CAL = null;
 const LGID = { 'premier-league': 'eng.1', 'la-liga': 'esp.1', 'serie-a': 'ita.1', 'bundesliga': 'ger.1', 'ligue-1': 'fra.1' };
 function evaluate(seasons, opt) {
-  let brier = 0, ll = 0, n = 0;
+  let brier = 0, ll = 0, n = 0, bo = 0, bb = 0;
   CAL = { '0.60-0.70': [0, 0, 0], '0.70-0.80': [0, 0, 0], '0.80-0.90': [0, 0, 0], '0.90+': [0, 0, 0] };
   for (const s of seasons) {
     const prev = opt.usePrev ? s.prev : null;
     const hist = [];
+    opt._older = s.older || [];
     for (const m of s.matches) {
       const pred = predict(hist, m, { ...opt, lgId: LGID[s.lg] }, prev);
-      if (pred && (!opt.onlyLate || m._late)) {
+      if (pred && (!opt.onlyLate || m._late) && (!opt.onlyH2H || m._h2h)) {
         const o = m.hg > m.ag ? 0 : m.hg === m.ag ? 1 : 2;
         const p = [pred.p1, pred.px, pred.p2];
         brier += p.reduce((acc, q, i) => acc + (q - (i === o ? 1 : 0)) ** 2, 0);
         ll += -Math.log(Math.max(1e-9, p[o]));
         n++;
+        const o25 = pred.legs.find(l => l.id === 'O2.5'), bt = pred.legs.find(l => l.id === 'BTTS');
+        bo += (o25.p - (o25.hit ? 1 : 0)) ** 2; bb += (bt.p - (bt.hit ? 1 : 0)) ** 2;
         for (const l of pred.legs) {
           const b = l.p >= 0.9 ? '0.90+' : l.p >= 0.8 ? '0.80-0.90' : l.p >= 0.7 ? '0.70-0.80' : l.p >= 0.6 ? '0.60-0.70' : null;
           if (b) { CAL[b][0]++; CAL[b][1] += l.p; CAL[b][2] += l.hit ? 1 : 0; }
@@ -38,7 +41,7 @@ function evaluate(seasons, opt) {
       hist.push(m);
     }
   }
-  return { brier: brier / n, logloss: ll / n, n };
+  return { brier: brier / n, logloss: ll / n, n, bo: bo / n, bb: bb / n };
 }
 
 function table(hist) {
@@ -91,6 +94,17 @@ function predict(hist, m, opt, prev) {
     lh *= f(ch); la *= f(ca);
     if (opt.onlyLate) m._late = !!((ch && ch.motivation !== 'normal') || (ca && ca.motivation !== 'normal'));
   }
+  if (opt.h2h) {
+    // Últimos 5 enfrentamientos directos (cualquier sede, temporadas anteriores incluidas).
+    const meet = [...opt._older, ...hist].filter(x => (x.home === m.home && x.away === m.away) || (x.home === m.away && x.away === m.home)).slice(-5);
+    if (meet.length >= (opt.h2hMin || 3)) {
+      const gH = meet.reduce((a, x) => a + (x.home === m.home ? x.hg : x.ag), 0) / meet.length;
+      const gA = meet.reduce((a, x) => a + (x.home === m.away ? x.hg : x.ag), 0) / meet.length;
+      const w = opt.h2h * meet.length / 5;
+      lh = (1 - w) * lh + w * gH; la = (1 - w) * la + w * gA;
+      m._h2h = true;
+    }
+  }
   const mat = M.scoreMatrix(lh, la);
   Object.assign(M.CFG, saved);
   const p1 = M.sumWhere(mat, (h, a) => h > a), px = M.sumWhere(mat, (h, a) => h === a);
@@ -103,7 +117,7 @@ const files = fs.readdirSync(dir).filter(f => f.endsWith('.csv')).sort();
 const byLeague = {};
 for (const f of files) { const lg = f.replace(/-\d{4}\.csv$/, ''); (byLeague[lg] = byLeague[lg] || []).push(readCsv(path.join(dir, f))); }
 const seasons = [];
-for (const lg of Object.keys(byLeague)) byLeague[lg].forEach((ms, i) => { if (i > 0) seasons.push({ lg, matches: ms, prev: byLeague[lg][i - 1] }); });
+for (const lg of Object.keys(byLeague)) byLeague[lg].forEach((ms, i) => { if (i > 0) seasons.push({ lg, matches: ms, prev: byLeague[lg][i - 1], older: byLeague[lg].slice(0, i).flat() }); });
 
 const base = { minGames: 4, split: true, form: true };
 const V2 = { HALF_LIFE: 8, ADJ_PRIOR_GOALS: 2, ADJ_WEIGHT: 0.5 };
@@ -121,7 +135,7 @@ for (const [name, opt] of variants) {
     continue;
   }
   const r = evaluate(seasons, opt);
-  console.log(`${name.padEnd(42)} Brier ${r.brier.toFixed(4)}  log-loss ${r.logloss.toFixed(4)}  n=${r.n}`);
+  console.log(`${name.padEnd(42)} Brier ${r.brier.toFixed(4)}  log-loss ${r.logloss.toFixed(4)}  n=${r.n}  Brier O2.5 ${r.bo.toFixed(4)}  ambos anotan ${r.bb.toFixed(4)}`);
 }
 console.log('\nCalibración de patas (último modelo): prob. que dijo el modelo vs. lo que pasó');
 for (const [b, [n, sp, hits]] of Object.entries(CAL)) if (n) console.log(`  ${b.padEnd(10)} dijo ${(100 * sp / n).toFixed(1)}%  pasó ${(100 * hits / n).toFixed(1)}%  (${n} patas)`);

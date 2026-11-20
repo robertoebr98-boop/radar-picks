@@ -159,6 +159,20 @@ t('contexto de tabla Liga MX última jornada', () => {
   assert.strictEqual(early.get('t1').tag, 'normal');
   assert.strictEqual(C.factor(c.get('t12')), 1.08);
 });
+t('últimos 5 enfrentamientos: resumen y peso 10%', () => {
+  const g = [{ id: '1', homeId: 'A', awayId: 'B', hs: 3, as: 1, stats: { home: { wonCorners: 6 }, away: { wonCorners: 4 } } }, { id: '2', homeId: 'B', awayId: 'A', hs: 0, as: 2 }, { id: '3', homeId: 'A', awayId: 'B', hs: 1, as: 1 }];
+  const H = M.h2hSummary(g, 'A');
+  assert.strictEqual(H.n, 3); assert.strictEqual(H.w, 2); assert.strictEqual(H.d, 1);
+  assert(Math.abs(H.gH - 2) < 1e-9 && Math.abs(H.gA - 2 / 3) < 1e-9);
+  assert.strictEqual(H.corners.avg, 10); assert.strictEqual(H.corners.n, 1);
+  const team = { gp: 10, gf: 15, ga: 12, pts: 15 };
+  const base = { avg: 1.4, home: { team }, away: { team } };
+  const a = M.expectedGoals(JSON.parse(JSON.stringify(base)));
+  const b = M.expectedGoals({ ...JSON.parse(JSON.stringify(base)), h2h: { n: 5, gH: 3, gA: 0 } });
+  assert(Math.abs(b.lh - (0.9 * a.lh + 0.1 * 3)) < 1e-9 && b.la < a.la);
+  const c = M.expectedGoals({ ...JSON.parse(JSON.stringify(base)), h2h: { n: 2, gH: 3, gA: 0 } });
+  assert.strictEqual(c.lh, a.lh);
+});
 const O = require('../optimize.js');
 t('optimizar ticket: cambia, quita y respeta reglas', () => {
   const pool = new Map([

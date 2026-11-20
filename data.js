@@ -185,6 +185,21 @@
     return out;
   }
 
+  // Estadísticas (córners, remates, tarjetas) de partidos concretos, leyendo el scoreboard de su día.
+  async function statsFor(lg, games) {
+    const list = await matchStatsFull(lg, (games || []).map(g => g.date).filter(Boolean));
+    return new Map(list.map(e => [String(e.id), e]));
+  }
+
+  // Últimos 5 enfrentamientos directos en esta liga (esta temporada y la anterior).
+  async function h2h(lg, hId, aId) {
+    const sh = await schedule(lg, hId).catch(() => ({ events: [] }));
+    const prev = sh.season ? await schedule(lg, hId, { season: sh.season - 1 }).catch(() => ({ events: [] })) : { events: [] };
+    const seen = new Set();
+    return [...sh.events, ...prev.events].filter(e => e.completed && e.hs != null && ((e.homeId === hId && e.awayId === aId) || (e.homeId === aId && e.awayId === hId)))
+      .filter(e => !seen.has(e.id) && seen.add(e.id)).sort((x, y) => new Date(y.date) - new Date(x.date)).slice(0, 5);
+  }
+
   // Todos los partidos terminados (con estadísticas) de la liga en esas fechas.
   async function matchStatsFull(lg, isoDates) {
     const days = [...new Set(isoDates.map(espnDay))].slice(0, 45);
@@ -387,7 +402,7 @@
     return parts.length >= 2 ? [parts[0].trim(), parts.slice(1).join(' ').trim()] : null;
   }
 
-  const api = { LEAGUES, DEMO, get, refresh, state, sameTeam, matchStatsFull, espnDay, matchStats, consensus, ODDS_SPORT, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
+  const api = { LEAGUES, DEMO, h2h, statsFor, get, refresh, state, sameTeam, matchStatsFull, espnDay, matchStats, consensus, ODDS_SPORT, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarData = api;
 })(typeof window !== 'undefined' ? window : globalThis);

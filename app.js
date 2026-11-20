@@ -113,8 +113,9 @@
       // Más fuentes: remates a puerta partido por partido (calendario de ESPN) y consenso de casas (si hay key).
       $('searchmsg').innerHTML = `<div class="loading"><span class="spin"></span>Leyendo remates a puerta y momios de varias casas…</div>`;
       const playedDates = [...sh.events, ...sa.events].filter(e => e.completed).map(e => e.date);
-      const [stats, cons] = await Promise.all([
+      const [stats, h2hStats, cons] = await Promise.all([
         D.matchStats(lg, playedDates).catch(() => new Map()),
+        D.statsFor(lg, h2h.slice(0, 5)).catch(() => new Map()),
         D.consensus(lg, home.name, away.name, fixture && fixture.date).catch(() => null),
       ]);
       let sumG = 0, sumS = 0;
@@ -129,7 +130,7 @@
       S.ctx = {
         motH: cls.get(hId) || null, motA: cls.get(aId) || null,
         adjH, adjA, cons, conv, sotStatsH: sotTeam(sotH, hId), sotStatsA: sotTeam(sotA, aId),
-        lg, home, away, st, sth, sta, splH, splA, fixture, sum, h2h: h2h.slice(0, 5),
+        lg, home, away, st, sth, sta, splH, splA, fixture, sum, h2h: h2h.slice(0, 5), h2hS: M.h2hSummary(h2h, hId, h2hStats),
         avg: M.leagueAverage([...st.values()]),
         espnOdds: (sum && sum.odds) || (fixture && fixture.odds) || null,
       };
@@ -195,6 +196,7 @@
     const inp = {
       avg: c.avg,
       home: { motiveF: window.RadarContext ? window.RadarContext.factor(c.motH) : 1, team: c.sth, split: c.splH.home, form: M.formFactor(l5h.map(x => x.result), ppgH), bajas: bajasPct('home'), adj: c.adjH },
+      h2h: c.h2hS ? { n: c.h2hS.n, gH: c.h2hS.gH, gA: c.h2hS.gA } : null,
       away: { motiveF: window.RadarContext ? window.RadarContext.factor(c.motA) : 1, team: c.sta, split: c.splA.away, form: M.formFactor(l5a.map(x => x.result), ppgA), bajas: bajasPct('away'), adj: c.adjA },
     };
     const o = S.odds;
@@ -352,7 +354,13 @@
   function renderH2H() {
     const c = S.ctx;
     $('h2h').innerHTML = c.h2h.map(e => `<span>${esc(e.homeName)} vs ${esc(e.awayName)} <span class="note">${e.date ? new Date(e.date).toLocaleDateString('es-MX') : ''}</span></span><span class="num">${e.hs}-${e.as}</span>`).join('') || '<span class="note">Sin enfrentamientos en esta temporada ni la anterior.</span>';
-    $('h2hnote').textContent = 'Incluye esta temporada y la anterior de esta competencia. Pesa poco en el modelo: cambian los planteles.';
+    const H = c.h2hS, hn = esc(c.home.short || c.home.name);
+    const avgTxt = (x, lbl) => x ? ` · ${x.avg.toFixed(1)} ${lbl}${x.n < H.n ? ` (${x.n} con datos)` : ''}` : '';
+    $('h2hnote').innerHTML = H
+      ? `<b>Últimos ${H.n}:</b> ${hn} ganó ${H.w}, empataron ${H.d}, perdió ${H.l} · goles por partido ${(H.gH + H.gA).toFixed(1)} (${H.gH.toFixed(1)} a ${H.gA.toFixed(1)}) · más de 2.5 en ${H.o25} de ${H.n} · ambos anotan en ${H.btts} de ${H.n}${avgTxt(H.corners, 'córners')}${avgTxt(H.shots, 'remates')}${avgTxt(H.cards, 'tarjetas')}.<br>`
+        + (H.n >= M.CFG.H2H_MIN ? `En el cálculo pesa ${Math.round(M.CFG.H2H_WEIGHT * Math.min(H.n, 5) / 5 * 100)}% en los goles esperados (el backtest con 5,621 partidos dio que 10% es lo que mejor predice; más peso empeora).` : `Con menos de ${M.CFG.H2H_MIN} enfrentamientos no entra al cálculo, solo es contexto.`)
+        + ' Incluye esta temporada y la anterior de esta competencia.'
+      : 'Sin enfrentamientos recientes: no entra al cálculo.';
   }
 
   function renderPlayers() {

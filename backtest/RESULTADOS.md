@@ -64,3 +64,18 @@ quien se juega algo ataca 8% más    Brier 0.5921  (mejora poco)
 - Los equipos ya clasificados o sin nada en juego **no** meten menos goles; sus partidos tienden a ser más abiertos. Por eso no se les baja el ataque.
 - A quien se juega algo se le sube 8% el ataque. Mejora poco (0.1%); la etiqueta sirve más como aviso (posibles rotaciones) que como ajuste.
 - Liga MX no está en estos datos: sus reglas (6 directos, 7-10 play-in) se aplican igual.
+
+## Enfrentamientos directos (H2H), 20-nov-2026
+Últimos 5 enfrentamientos (cualquier sede, temporadas anteriores incluidas), mezclados con los goles esperados: λ = (1−w)·λ + w·goles H2H, con w escalado por n/5 y solo si hay ≥ 3 enfrentamientos. Medido en los 5,621 partidos que tenían ≥ 3 H2H.
+
+| peso H2H | Brier 1X2 | log-loss | Brier O2.5 |
+|---|---|---|---|
+| 0% (v4) | 0.5871 | 0.9855 | 0.2438 |
+| 5% | 0.5868 | 0.9850 | 0.2435 |
+| **10%** | **0.5867** | **0.9848** | 0.2433 |
+| 15% | 0.5869 | 0.9851 | 0.2432 |
+| 20% | 0.5874 | 0.9858 | — |
+| 30% | 0.5892 | 0.9884 | — |
+| 10%, mínimo 5 H2H | 0.5870 | 0.9852 | 0.2435 |
+
+Conclusión: el H2H aporta poco una vez que hay fuerza por rival y remates (mejora 0.0004 de Brier con 10%); más de 15% empeora. Se usa 10% (CFG.H2H_WEIGHT). Ambos anotan no cambia (0.2459).
