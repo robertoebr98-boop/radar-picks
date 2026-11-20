@@ -126,4 +126,10 @@ t('día de sorpresas: estrategia defensiva', () => {
   assert.strictEqual(r.mode, 'defensivo'); assert(r.MAX_LEGS <= 4 && r.MIN_P >= 0.72);
   assert.strictEqual(Y.strategy({ n: 1 }).mode, 'normal');
 });
+t('nombres de casas vs ESPN', () => {
+  const ok = [['1. FC Köln', 'FC Cologne'], ['Bayern Munich', 'Bayern Munich'], ['Borussia Monchengladbach', 'Borussia Mönchengladbach'], ['Club America', 'América'], ['Club Leon', 'León'], ['Atletico San Luis', 'Atlético de San Luis'], ['Inter Milan', 'Internazionale'], ['Manchester United', 'Manchester United'], ['Paris Saint Germain', 'Paris Saint-Germain'], ['Tigres UANL', 'Tigres UANL'], ['FC Juarez', 'FC Juárez'], ['Pumas UNAM', 'Pumas UNAM']];
+  for (const [a, b] of ok) assert(D.sameTeam(a, b), a + ' ~ ' + b);
+  const no = [['Manchester United', 'Newcastle United'], ['Manchester City', 'Manchester United'], ['Real Madrid', 'Real Sociedad'], ['Atletico Madrid', 'Athletic Club'], ['Inter', 'AC Milan']];
+  for (const [a, b] of no) assert(!D.sameTeam(a, b), a + ' !~ ' + b);
+});
 console.log(`\n${n} pruebas OK`);

@@ -192,11 +192,30 @@
     oddsCache.set(lg, { p, t: Date.now() });
     return p;
   }
+  // Las casas y ESPN escriben distinto los equipos: se llevan ambos a una forma común.
+  const CANON = [
+    ['manchester united', 'man united'], ['manchester city', 'man city'], ['man utd', 'man united'],
+    ['1 fc koln', 'cologne'], ['fc koln', 'cologne'], ['koln', 'cologne'], ['bayern munchen', 'bayern munich'],
+    ['borussia monchengladbach', 'gladbach'], ['monchengladbach', 'gladbach'], ['hamburger sv', 'hamburg'], ['hamburg sv', 'hamburg'],
+    ['fsv mainz 05', 'mainz'], ['mainz 05', 'mainz'], ['tsg hoffenheim', 'hoffenheim'], ['1899 hoffenheim', 'hoffenheim'],
+    ['internazionale', 'inter'], ['inter milan', 'inter'], ['ac milan', 'milan'], ['as roma', 'roma'], ['ss lazio', 'lazio'],
+    ['paris saint germain', 'psg'], ['paris sg', 'psg'], ['atletico de madrid', 'atletico madrid'], ['athletic bilbao', 'athletic club'],
+    ['wolverhampton wanderers', 'wolves'], ['wolverhampton', 'wolves'], ['brighton and hove albion', 'brighton'], ['tottenham hotspur', 'tottenham'],
+    ['west ham united', 'west ham'], ['newcastle united', 'newcastle'], ['nottingham forest', 'nottingham'], ['leeds united', 'leeds'],
+    ['club america', 'america'], ['club leon', 'leon'], ['pumas unam', 'unam'], ['atletico de san luis', 'san luis'], ['atletico san luis', 'san luis'],
+    ['tigres uanl', 'tigres'], ['santos laguna', 'santos'], ['guadalajara chivas', 'guadalajara'], ['chivas guadalajara', 'guadalajara'], ['cf monterrey', 'monterrey'],
+  ];
+  const GENERIC = new Set(['united', 'city', 'club', 'real', 'sporting', 'athletic', 'atletico', 'deportivo', 'borussia', 'olympique', 'union', 'stade', 'racing', 'calcio']);
+  function canon(x) {
+    let n = ' ' + norm(x).replace(/\b(fc|cf|afc|sc|ac|ssc|cd|ud|sd|rc|sv|vfb|vfl)\b/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+    for (const [a, b] of CANON) n = n.replace(' ' + a + ' ', ' ' + b + ' ');
+    return n.trim();
+  }
   function sameTeam(a, b) {
-    const A = norm(a), B = norm(b);
+    const A = canon(a), B = canon(b);
     if (!A || !B) return false;
-    if (A === B || A.includes(B) || B.includes(A)) return true;
-    const wa = A.split(' ').filter(w => w.length >= 4), wb = new Set(B.split(' ').filter(w => w.length >= 4));
+    if (A === B || (' ' + A + ' ').includes(' ' + B + ' ') || (' ' + B + ' ').includes(' ' + A + ' ')) return true;
+    const wa = A.split(' ').filter(w => w.length >= 4 && !GENERIC.has(w)), wb = new Set(B.split(' ').filter(w => w.length >= 4 && !GENERIC.has(w)));
     return wa.some(w => wb.has(w));
   }
   async function consensus(lg, homeName, awayName, iso) {
@@ -346,7 +365,7 @@
     return parts.length >= 2 ? [parts[0].trim(), parts.slice(1).join(' ').trim()] : null;
   }
 
-  const api = { LEAGUES, DEMO, get, refresh, state, espnDay, matchStats, consensus, ODDS_SPORT, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
+  const api = { LEAGUES, DEMO, get, refresh, state, sameTeam, espnDay, matchStats, consensus, ODDS_SPORT, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarData = api;
 })(typeof window !== 'undefined' ? window : globalThis);
