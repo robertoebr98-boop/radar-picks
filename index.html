@@ -34,7 +34,7 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:radial-gradient(1200px 600px at 50% -200px,var(--bg2),var(--bg)) fixed,var(--bg);min-height:100vh;color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45}
-.wrap{max-width:600px;margin:0 auto;padding-block:18px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.wrap{max-width:600px;margin:0 auto;padding-block:18px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -163,6 +163,22 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
 .fresh .live{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .btn.sm{padding:6px 10px;font-size:12px}
 .icon{background:var(--sub);border:1px solid var(--line2);color:var(--fg);border-radius:8px;padding:6px 9px;cursor:pointer;font-size:12px}
+
+/* Calculadora de ticket */
+.addb{border:1px solid var(--line2);background:var(--sub);color:var(--accent);font-weight:700;border-radius:8px;width:30px;height:30px;cursor:pointer;flex-shrink:0;font-size:16px;line-height:1}
+.addb.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.sl{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--sub);font-size:12.5px}
+.sl .m{font-size:11px;color:var(--muted)}
+.sl .x{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px}
+.sgrid{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:13px;padding:10px 12px;border-radius:10px;border:1px solid var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent)}
+.sgrid b{text-align:right}
+.good{color:var(--good)} .bad{color:var(--bad)}
+.warnbox{background:var(--warn-soft);color:var(--warn);padding:8px 10px;border-radius:10px;font-size:12px}
+.money{display:inline-flex;align-items:center;gap:4px;font-weight:600}
+.slipbar{position:fixed;left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom,0px));width:min(568px,calc(100% - 32px));display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 14px;border-radius:14px;border:1px solid var(--accent);background:var(--card);color:var(--fg);font-size:12.5px;box-shadow:0 10px 30px rgb(0 0 0/.45);cursor:pointer;z-index:10;text-align:left}
+.slipbar b{color:var(--accent)}
+.leg{grid-template-columns:1fr auto auto !important}
+td.addc{width:34px;padding-left:6px}
 .foot{font-size:11.5px;color:var(--muted);text-align:center}
 </style>
 </head>
@@ -264,12 +280,20 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
     </section>
   </div>
 
+  <section class="card" id="slip" aria-label="Calculadora de ticket">
+    <h2>Calculadora de ticket <small>monto + patas → lo que ganarías</small></h2>
+    <label class="bj">Monto a apostar <span class="money"><span>$</span><input class="in" id="slipstake" inputmode="decimal" type="number" min="0" step="1" value="10" style="width:110px"></span></label>
+    <div id="slipbody" style="display:flex;flex-direction:column;gap:8px"></div>
+  </section>
+
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
 </div>
+<button class="slipbar hidden" id="slipbar" aria-label="Ver ticket"></button>
 <script src="model.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script src="day.js"></script>
 <script src="dayui.js"></script>
+<script src="slip.js"></script>
 </body>
 </html>

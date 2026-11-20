@@ -43,6 +43,12 @@
     } finally { $('dgo').disabled = false; }
   }
 
+  function legOf(x) {
+    const m = x.match, mk = `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`;
+    return { key: `${mk}:${x.leg.id}`, matchKey: mk, match: `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`, label: x.leg.label, p: x.leg.p, odd: x.leg.odd || null };
+  }
+  function btn(x) { return window.RadarSlipBtn ? window.RadarSlipBtn(legOf(x)) : ''; }
+
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
   function render(r, date) {
@@ -51,7 +57,8 @@
     let html = `<div class="tk"><h3>Ticket sugerido · ${t.legs.length} patas</h3>`;
     if (t.legs.length) {
       html += t.legs.map(x => `<div class="leg"><span><b>${esc(x.leg.label)}</b><br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)} · ${hour(x.match.ev.date)}</span></span>
-        <span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'pide ≥ ' + f2(x.leg.minNeeded)}</span></span></div>`).join('');
+        <span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'pide ≥ ' + f2(x.leg.minNeeded)}</span></span>${btn(x)}</div>`).join('');
+      html += `<button class="btn ghost sm" id="addall">Pasar el ticket sugerido a la calculadora</button>`;
       html += `<div class="sum"><span>Prob. de acertar todo: <b class="num">${pct(t.p)}</b></span><span>Momio total aprox.: <b class="num">${f2(t.odd)}</b></span></div>
         <p class="note">Una pata por partido. Solo patas con prob ≥ 62% y momio ≥ 1.30, sin volados, máximo 10. "Pide ≥" es el momio mínimo que debe darte Draftea o Novibet; si da menos, quita esa pata.</p>`;
     } else html += '<p class="note">Ningún partido de este día pasa los filtros. Mejor no apostar.</p>';
@@ -59,7 +66,7 @@
 
     if (r.value.length) {
       html += '<h3>Picks con valor (momio de referencia ESPN)</h3>' + r.value.map(x => `<div class="leg"><span><b>${esc(x.leg.label)}</b><br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)}</span></span>
-        <span style="text-align:right"><b class="num">${f2(x.leg.odd)}</b><br><span class="m">prob ${pct(x.leg.p)} · valor ${f2(x.leg.ev)}</span></span></div>`).join('');
+        <span style="text-align:right"><b class="num">${f2(x.leg.odd)}</b><br><span class="m">prob ${pct(x.leg.p)} · valor ${f2(x.leg.ev)}</span></span>${btn(x)}</div>`).join('');
     }
 
     html += '<h3>Todos los partidos</h3>';
@@ -77,6 +84,12 @@
     }
     html += '<p class="note">Toca un partido de fútbol para ver el análisis completo y capturar tus momios. NBA y NFL usan la probabilidad de la casa sin margen (sin modelo propio todavía). El pronóstico del día usa tabla + forma + momios; el análisis completo además usa local/visita y bajas.</p>';
     $('dout').innerHTML = html;
+    const all = $('addall');
+    if (all) all.addEventListener('click', () => {
+      for (const x of t.legs) { const l = legOf(x); if (!window.RadarSlip.has(l.key)) window.RadarSlip.add(l); }
+      $('slip').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    if (window.RadarSlip) window.RadarSlip.refresh();
     $('dout').querySelectorAll('.dm[data-lg]').forEach(b => b.addEventListener('click', () => window.RadarApp.openMatch(b.dataset.lg, b.dataset.h, b.dataset.a)));
   }
 

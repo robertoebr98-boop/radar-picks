@@ -12,7 +12,11 @@ Elige fecha y liga (o todas): analiza cada partido con tabla + forma + momios de
 - **Consenso de varias casas** (opcional): crea una key gratis en the-odds-api.com y agrégala en Vercel → Settings → Environment Variables como `ODDS_API_KEY`, luego Redeploy. Sin key, la página usa los momios de ESPN.
 - **Backtest:** `backtest/RESULTADOS.md`.
 
+## Calculadora de ticket
+Toca + en cualquier mercado, en el ticket sugerido o en los picks con valor. Escribe el monto y el momio de cada pata: muestra momio total, pago, ganancia, probabilidad del modelo y valor esperado. Se guarda en tu navegador.
+
 ## Archivos
+- `slip.js`: calculadora de ticket.
 - `day.js`, `dayui.js`: pronóstico del día.
 - `index.html`, `app.js`: la página.
 - `model.js`: el modelo (Poisson, Dixon-Coles, mezcla con mercado, filtros).

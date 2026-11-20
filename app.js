@@ -224,6 +224,7 @@
     renderH2H();
     renderPlayers();
     renderCalc(inp, res);
+    if (window.RadarSlip) window.RadarSlip.refresh();
   }
 
   function tagHtml(v) {
@@ -237,17 +238,19 @@
   }
 
   function renderMarkets(res) {
-    let html = '<tr><th>Mercado</th><th>Prob. / peor</th><th>Momio</th></tr>';
+    let html = '<tr><th>Mercado</th><th>Prob. / peor</th><th>Momio</th><th></th></tr>';
+    const c = S.ctx, matchName = `${c.home.short || c.home.name} vs ${c.away.short || c.away.name}`, matchKey = `${c.lg}:${c.home.id}:${c.away.id}`;
     let group = '';
     for (const mk of res.markets) {
-      if (mk.group !== group) { group = mk.group; html += `<tr class="grp"><td colspan="3">${esc(group)}</td></tr>`; }
+      if (mk.group !== group) { group = mk.group; html += `<tr class="grp"><td colspan="4">${esc(group)}</td></tr>`; }
       const odd = S.odds[mk.id];
       const v = M.verdict(mk, odd);
       const be = odd ? Math.min(100, 100 / odd) : null;
       html += `<tr>
         <td><span class="mk">${esc(mk.label)}</span><span class="rg">justo ${f2(mk.fair)}</span> ${tagHtml(v)}</td>
         <td class="num">${pct(mk.p)} <span class="rg">/ ${pct(mk.worst)}</span><div class="meter"><i style="width:${mk.p * 100}%"></i>${be ? `<s style="left:${be}%"></s>` : ''}</div></td>
-        <td><input class="odd" inputmode="decimal" data-id="${mk.id}" value="${odd || ''}" placeholder="—" aria-label="Momio ${esc(mk.label)}"></td></tr>`;
+        <td><input class="odd" inputmode="decimal" data-id="${mk.id}" value="${odd || ''}" placeholder="—" aria-label="Momio ${esc(mk.label)}"></td>
+        <td class="addc">${slipBtn({ key: `${matchKey}:${mk.id}`, matchKey, match: matchName, label: mk.label, p: mk.p, odd: odd || null })}</td></tr>`;
     }
     $('mkts').innerHTML = html;
     $('oddsrc').textContent = S.oddsFrom ? `momios precargados: ${S.oddsFrom}` : '';
@@ -258,6 +261,11 @@
       saveOdds(); setTimeout(render);
     }));
   }
+
+  function slipBtn(leg) {
+    return `<button class="addb" data-slip="${esc(leg.key)}" data-leg="${esc(JSON.stringify(leg))}" aria-label="Agregar ${esc(leg.label)} al ticket">+</button>`;
+  }
+  window.RadarSlipBtn = slipBtn;
 
   function renderVerdict(res, inp) {
     const rows = res.markets.map(mk => ({ mk, odd: S.odds[mk.id], v: M.verdict(mk, S.odds[mk.id]) }));
