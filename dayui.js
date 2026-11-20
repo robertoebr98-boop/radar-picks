@@ -59,7 +59,54 @@
 
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
+  let SHOWN = [];
+
+  // Mercados de un partido: resultado, goles y ambos anotan (modelo + momio real si hay) y
+  // córners, remates y tarjetas (modelo de conteos; momio estimado porque no hay fuente gratis).
+  async function openMarkets(idx, btn) {
+    const m = SHOWN[idx], panel = $('mk' + idx);
+    const open = panel.classList.toggle('hidden') === false;
+    btn.setAttribute('aria-expanded', open); btn.textContent = open ? 'Mercados ▴' : 'Mercados ▾';
+    if (!open || panel.dataset.done) return;
+    panel.innerHTML = '<div class="loading"><span class="spin"></span>Calculando córners, remates y tarjetas…</div>';
+    const name = n => Y.shortName(n);
+    const MAIN = ['1', 'X', '2', '1X', 'X2', '12', 'O1.5', 'O2.5', 'O3.5', 'U2.5', 'U3.5', 'BTTS', 'NBTTS', 'H0.5', 'A0.5', 'H1.5', 'A1.5', '1&O1.5', '2&O1.5'];
+    const rows = [];
+    if (m.res) {
+      for (const mk of m.res.markets) {
+        if (!MAIN.includes(mk.id)) continue;
+        let prov = m.odds && m.odds[mk.id], src = 'ESPN';
+        const ci = { '1': 0, 'X': 1, '2': 2 }[mk.id];
+        if (!prov && m.cons && ci != null) { prov = 1 / m.cons.probs[ci] / 1.05; src = 'consenso'; }
+        if (!prov) { prov = mk.fair / 1.06; src = 'estimado'; }
+        rows.push({ id: mk.id, group: mk.group, label: mk.label, p: mk.p, prov, src });
+      }
+    }
+    let note = '';
+    if (!m.us && window.RadarProps) {
+      try {
+        const avgs = await window.RadarProps.leagueHistory(m.lg);
+        const props = window.RadarProps.markets(m.ev, avgs, m.lg, name(m.ev.homeName), name(m.ev.awayName));
+        for (const x of props) rows.push({ id: x.id, group: x.group, label: x.label, p: x.p, prov: x.fair / window.RadarProps.PROP_MARGIN, src: 'estimado' });
+        if (props.expected) note = `Esperado: ${props.expected.corners.toFixed(1)} córners · ${props.expected.shots.toFixed(0)} remates · ${props.expected.sot.toFixed(1)} a puerta · ${props.expected.cards.toFixed(1)} tarjetas.`;
+        else note = 'Sin suficientes partidos recientes con estadísticas para córners, remates y tarjetas.';
+      } catch (e) { note = 'No pude cargar córners/remates/tarjetas.'; }
+    }
+    const mkKey = `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`, title = `${name(m.ev.homeName)} vs ${name(m.ev.awayName)}`;
+    let html = '', g = '';
+    for (const x of rows) {
+      if (x.group !== g) { g = x.group; html += `<div class="mkg">${esc(g)}</div>`; }
+      const vol = x.p >= 0.45 && x.p <= 0.55;
+      const leg = { key: `${mkKey}:${x.id}`, matchKey: mkKey, match: title, label: x.label, p: x.p, prov: +x.prov.toFixed(2), provSrc: x.src };
+      html += `<div class="mkr${x.p >= 0.7 ? ' hi' : ''}"><span>${esc(x.label)}${vol ? ' <span class="st vol">volado</span>' : ''}</span><span class="num">${pct(x.p)}</span><span class="num">${f2(x.prov)}<br><span class="m">${esc(x.src)}</span></span>${window.RadarSlipBtn ? window.RadarSlipBtn(leg) : ''}</div>`;
+    }
+    panel.innerHTML = `<div class="mkr hd"><span>Mercado</span><span>Prob.</span><span>Momio</span><span></span></div>${html}<p class="note">${esc(note)} "estimado" = momio justo del modelo menos el margen típico de la casa (6% en goles, 8% en córners/tarjetas). Escribe el real de Draftea en la calculadora. En verde, prob ≥ 70%.</p>`;
+    panel.dataset.done = '1';
+    if (window.RadarSlip) window.RadarSlip.refresh();
+  }
+
   function render(r, date) {
+    SHOWN = [];
     const t = r.ticket, R = r.rules || Y.TICKET;
     const nothing = !r.matches.length && !(r.played || []).length && !(r.live || []).length;
     if (nothing) { $('dout').innerHTML = '<p class="note">No hay partidos ese día en lo que elegiste.</p>'; return; }
@@ -93,8 +140,10 @@
         ? `${esc(w.label)}${m.safe && m.safe.id !== w.id ? ` · seguro: ${esc(m.safe.label)} ${pct(m.safe.p)}` : ''}${m.top ? ` · marcador ${m.top.h}-${m.top.a}` : ''}${m.cons ? ` · consenso ${m.cons.books} casas` : m.hasMarket ? '' : ' · sin momios'}`
         : (m.us ? 'ESPN aún no publica momios' : 'equipo sin partidos en la tabla');
       const clickable = !m.us && !m.noData;
-      html += `<button class="dm" ${clickable ? `data-lg="${m.lg}" data-h="${m.ev.homeId}" data-a="${m.ev.awayId}"` : 'disabled'}>
-        <span><b>${matchTitle(m)}</b> <span class="m">${hour(m.ev.date)}</span><br><span class="m">${sub}</span></span><span style="text-align:right">${right}</span></button>`;
+      const idx = SHOWN.push(m) - 1;
+      html += `<div class="dmw"><button class="dm" ${clickable ? `data-lg="${m.lg}" data-h="${m.ev.homeId}" data-a="${m.ev.awayId}"` : 'disabled'}>
+        <span><b>${matchTitle(m)}</b> <span class="m">${hour(m.ev.date)}</span><br><span class="m">${sub}</span></span><span style="text-align:right">${right}</span></button>
+        ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}</div>`;
     }
     if ((r.live || []).length) {
       html += '<h3>En juego (fuera del ticket)</h3>' + r.live.map(m => `<div class="dm" style="cursor:default"><span><b>${matchTitle(m)}</b> <span class="m">${esc(m.league)} · ${esc(m.ev.detail || 'en juego')}</span></span><span class="num">${m.ev.hs ?? '-'}-${m.ev.as ?? '-'}</span></div>`).join('');
@@ -118,6 +167,7 @@
       $('slip').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     if (window.RadarSlip) window.RadarSlip.refresh();
+    $('dout').querySelectorAll('[data-mk]').forEach(b => b.addEventListener('click', () => openMarkets(+b.dataset.mk, b)));
     $('dout').querySelectorAll('.dm[data-lg]').forEach(b => b.addEventListener('click', () => window.RadarApp.openMatch(b.dataset.lg, b.dataset.h, b.dataset.a)));
   }
 

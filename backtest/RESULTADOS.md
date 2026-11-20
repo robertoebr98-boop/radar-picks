@@ -24,3 +24,28 @@ Calibración de patas (último modelo): prob. que dijo el modelo vs. lo que pas�
 - **No se midió:** la mezcla 50/50 con la casa (estos datos no traen momios). Las casas suelen andar en Brier ~0.575, por eso la mitad del peso es suya.
 
 Repetir: `sh backtest/descargar.sh && node backtest/backtest.js`
+
+## Córners, remates y tarjetas (props-backtest.js)
+
+Cada partido se predijo con las 5 semanas anteriores de su liga (3,800 partidos, 2023-2025).
+
+```
+Córners
+  0.60-0.70  dijo 64.7%  pasó 66.0%  (9278)
+  0.70-0.80  dijo 74.1%  pasó 74.5%  (4661)
+  0.80+      dijo 82.9%  pasó 81.2%  (674)
+Remates
+  0.60-0.70  dijo 64.8%  pasó 64.2%  (3815)
+  0.70-0.80  dijo 74.8%  pasó 74.9%  (3096)
+  0.80+      dijo 85.3%  pasó 84.6%  (2088)
+Remates a puerta
+  0.60-0.70  dijo 64.9%  pasó 64.5%  (7898)
+  0.70-0.80  dijo 74.8%  pasó 74.9%  (6829)
+  0.80+      dijo 84.8%  pasó 85.3%  (4324)
+Tarjetas
+  0.60-0.70  dijo 64.7%  pasó 64.1%  (3721)
+  0.70-0.80  dijo 75.0%  pasó 75.9%  (4339)
+  0.80+      dijo 82.9%  pasó 82.4%  (1293)
+```
+
+Córners necesitó más dispersión (1.8) porque varían mucho de partido a partido. Tarjetas usa el promedio de la liga ajustado por faltas: ESPN no da tarjetas por partido.

@@ -132,4 +132,17 @@ t('nombres de casas vs ESPN', () => {
   const no = [['Manchester United', 'Newcastle United'], ['Manchester City', 'Manchester United'], ['Real Madrid', 'Real Sociedad'], ['Atletico Madrid', 'Athletic Club'], ['Inter', 'AC Milan']];
   for (const [a, b] of no) assert(!D.sameTeam(a, b), a + ' !~ ' + b);
 });
+const P = require('../props.js');
+t('córners/remates/tarjetas: binomial negativa y mercados', () => {
+  assert(Math.abs(P.overProb(2, 1, 1.5) - (1 - Math.exp(-2) * 3)) < 1e-9); // Poisson: P(X>=2)
+  assert(P.overProb(10, 1.8, 9.5) < P.overProb(10, 1, 9.5) + 0.05);
+  const evs = [];
+  for (let i = 0; i < 12; i++) evs.push({ homeId: i % 2 ? 'A' : 'C', awayId: i % 2 ? 'B' : 'D', stats: { home: { wonCorners: 7, totalShots: 15, shotsOnTarget: 5, foulsCommitted: 11 }, away: { wonCorners: 3, totalShots: 9, shotsOnTarget: 3, foulsCommitted: 12 } } });
+  const avgs = P.teamAverages(evs);
+  const mk = P.markets({ homeId: 'A', awayId: 'B' }, avgs, 'eng.1', 'A', 'B');
+  const over = mk.find(x => x.id === 'C>8.5'), under = mk.find(x => x.id === 'C<8.5');
+  assert(over && under && Math.abs(over.p + under.p - 1) < 1e-9);
+  assert(mk.expected.corners > 8 && mk.expected.corners < 12, mk.expected.corners);
+  assert(mk.find(x => x.group === 'Tarjetas'));
+});
 console.log(`\n${n} pruebas OK`);

@@ -118,6 +118,7 @@
       homeLogo: logoOf(home.team), awayLogo: logoOf(away.team),
       hs: num(home.score), as: num(away.score),
       homeSot: statOf(home, 'shotsOnTarget'), awaySot: statOf(away, 'shotsOnTarget'),
+      stats: { home: statsObj(home), away: statsObj(away) },
       homeForm: typeof home.form === 'string' ? home.form : '', awayForm: typeof away.form === 'string' ? away.form : '',
       homeAbbr: home.team?.abbreviation || '', awayAbbr: away.team?.abbreviation || '',
       odds: parseOdds((c.odds || [])[0]),
@@ -128,6 +129,12 @@
   function statOf(comp, name) {
     const st = (comp.statistics || []).find(x => x.name === name);
     return st ? num(st.displayValue ?? st.value) : null;
+  }
+
+  function statsObj(comp) {
+    const o = {};
+    for (const st of comp.statistics || []) if (st.name) { const v = num(st.displayValue ?? st.value); if (v != null) o[st.name] = v; }
+    return Object.keys(o).length ? o : null;
   }
 
   function parseOdds(o) {
@@ -172,6 +179,20 @@
       for (const d of chunk) for (const ev of d.events || []) {
         const e = parseEvent(ev);
         if (e.completed && e.hs != null && e.homeSot != null && e.awaySot != null) out.set(e.id, e);
+      }
+    }
+    return out;
+  }
+
+  // Todos los partidos terminados (con estadísticas) de la liga en esas fechas.
+  async function matchStatsFull(lg, isoDates) {
+    const days = [...new Set(isoDates.map(espnDay))].slice(0, 45);
+    const out = [], seen = new Set();
+    for (let i = 0; i < days.length; i += 7) {
+      const chunk = await Promise.all(days.slice(i, i + 7).map(d => get(site(lg, 'scoreboard'), { dates: d }).catch(() => ({ events: [] }))));
+      for (const d of chunk) for (const ev of d.events || []) {
+        const e = parseEvent(ev);
+        if (e.completed && !seen.has(e.id) && e.stats && e.stats.home && e.stats.away) { seen.add(e.id); out.push(e); }
       }
     }
     return out;
@@ -365,7 +386,7 @@
     return parts.length >= 2 ? [parts[0].trim(), parts.slice(1).join(' ').trim()] : null;
   }
 
-  const api = { LEAGUES, DEMO, get, refresh, state, sameTeam, espnDay, matchStats, consensus, ODDS_SPORT, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
+  const api = { LEAGUES, DEMO, get, refresh, state, sameTeam, matchStatsFull, espnDay, matchStats, consensus, ODDS_SPORT, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarData = api;
 })(typeof window !== 'undefined' ? window : globalThis);
