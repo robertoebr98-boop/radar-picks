@@ -78,6 +78,8 @@
     const lg = S.lg;
     const home = S.teams.find(t => t.id === hId) || { id: hId, name: 'Local' };
     const away = S.teams.find(t => t.id === aId) || { id: aId, name: 'Visita' };
+    // Partido nuevo: se oculta el anterior mientras carga, para no mezclar datos de dos partidos.
+    if (!quiet && S.current && (S.current[0] !== hId || S.current[1] !== aId)) $('result').classList.add('hidden');
     $('searchmsg').innerHTML = `<div class="loading"><span class="spin"></span>Juntando datos de ${esc(home.name)} vs ${esc(away.name)}…</div>`;
     try {
       const [st, sh, sa, fxh] = await Promise.all([
@@ -221,8 +223,14 @@
 
     $('comp').textContent = [$('league').selectedOptions[0].text, c.fixture ? fmtDate(c.fixture.date) : 'partido hipotético', c.fixture?.venue].filter(Boolean).join(' · ');
     $('hn').textContent = c.home.short || c.home.name; $('an').textContent = c.away.short || c.away.name;
-    $('hl').src = c.home.logo || ''; $('al').src = c.away.logo || '';
-    $('hl').classList.toggle('hidden', !c.home.logo); $('al').classList.toggle('hidden', !c.away.logo);
+    // Escudos: se ocultan y se vacían antes de cargar el nuevo, para que nunca quede el del partido anterior
+    // mientras el nuevo tarda en llegar (o si no llega).
+    for (const [id, url] of [['hl', c.home.logo || (c.fixture && (c.fixture.homeId === c.home.id ? c.fixture.homeLogo : c.fixture.awayLogo))], ['al', c.away.logo || (c.fixture && (c.fixture.awayId === c.away.id ? c.fixture.awayLogo : c.fixture.homeLogo))]]) {
+      const im = $(id), u = url || '';
+      if (im.dataset.u === u) continue;
+      im.dataset.u = u; im.classList.add('hidden'); im.removeAttribute('src');
+      if (u) { im.onload = () => { if (im.dataset.u === u) im.classList.remove('hidden'); }; im.src = u; }
+    }
     $('hs').textContent = `${c.sth.rank ? c.sth.rank + 'º · ' : ''}${c.sth.pts} pts · xG ${f2(res.lh)}`;
     $('as').textContent = `${c.sta.rank ? c.sta.rank + 'º · ' : ''}${c.sta.pts} pts · xG ${f2(res.la)}`;
     const top = res.topScores[0];
