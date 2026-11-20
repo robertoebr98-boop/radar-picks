@@ -23,8 +23,12 @@
     $('dgo').addEventListener('click', run);
   }
 
+  let ran = false;
+  window.RadarDayUI = { rerun: () => ran ? run() : Promise.resolve() };
+
   async function run() {
     const v = $('dlg').value, date = $('dday').value;
+    ran = true;
     if (!date) return;
     const ids = v === 'main' ? MAIN : v === 'soccer' ? SOCCER : v === 'all' ? [...SOCCER, 'nba', 'nfl'] : [v];
     $('dout').innerHTML = '';

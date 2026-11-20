@@ -70,7 +70,7 @@
   }
 
   // ---------- Carga del partido ----------
-  async function analyzeMatch(hId, aId) {
+  async function analyzeMatch(hId, aId, quiet) {
     const lg = S.lg;
     const home = S.teams.find(t => t.id === hId) || { id: hId, name: 'Local' };
     const away = S.teams.find(t => t.id === aId) || { id: aId, name: 'Visita' };
@@ -101,7 +101,14 @@
       if (sum && sum.h2h.length) for (const g of sum.h2h) if (!seen.has(g.id)) { seen.add(g.id); h2h.push({ ...g, homeName: g.homeId === hId ? home.name : away.name, awayName: g.awayId === hId ? home.name : away.name }); }
       h2h.sort((x, y) => new Date(y.date) - new Date(x.date));
 
+      // Fuerza de cada rival según la tabla, para ajustar cada resultado por la calidad del rival.
+      const avgL = M.leagueAverage([...st.values()]);
+      const oppStrength = id => { const t = st.get(String(id)); return t && t.gp ? M.strength(t, avgL) : null; };
+      const prevMark = evs => evs.map(e => ({ ...e, prevSeason: true }));
+      const adjH = M.adjustedStrength([...sh.events.filter(e => e.completed), ...prevMark(ph.events.filter(e => e.completed))], hId, oppStrength, avgL);
+      const adjA = M.adjustedStrength([...sa.events.filter(e => e.completed), ...prevMark(pa.events.filter(e => e.completed))], aId, oppStrength, avgL);
       S.ctx = {
+        adjH, adjA,
         lg, home, away, st, sth, sta, splH, splA, fixture, sum, h2h: h2h.slice(0, 5),
         avg: M.leagueAverage([...st.values()]),
         espnOdds: (sum && sum.odds) || (fixture && fixture.odds) || null,
@@ -115,7 +122,8 @@
       $('searchmsg').innerHTML = '';
       $('result').classList.remove('hidden');
       render();
-      $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (!quiet) $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      S.current = [hId, aId];
     } catch (e) {
       $('searchmsg').innerHTML = `<div class="err">No pude armar el análisis: ${esc(e.message)}.</div>`;
     }
@@ -158,8 +166,8 @@
     const ppgH = c.sth.gp ? c.sth.pts / c.sth.gp : 0, ppgA = c.sta.gp ? c.sta.pts / c.sta.gp : 0;
     const inp = {
       avg: c.avg,
-      home: { team: c.sth, split: c.splH.home, form: M.formFactor(l5h.map(x => x.result), ppgH), bajas: bajasPct('home') },
-      away: { team: c.sta, split: c.splA.away, form: M.formFactor(l5a.map(x => x.result), ppgA), bajas: bajasPct('away') },
+      home: { team: c.sth, split: c.splH.home, form: M.formFactor(l5h.map(x => x.result), ppgH), bajas: bajasPct('home'), adj: c.adjH },
+      away: { team: c.sta, split: c.splA.away, form: M.formFactor(l5a.map(x => x.result), ppgA), bajas: bajasPct('away'), adj: c.adjA },
     };
     const o = S.odds;
     const market = (o['1'] && o['X'] && o['2']) ? { odds1: o['1'], oddsX: o['X'], odds2: o['2'], over25: o['O2.5'], under25: o['U2.5'] } : null;
@@ -326,7 +334,9 @@
       ['Promedio de goles por equipo en la liga', inp.avg.toFixed(2)],
       ['Ataque local / defensa visita', `${f2(b.sh.att)} / ${f2(b.sa.def)}`],
       ['Ataque visita / defensa local', `${f2(b.sa.att)} / ${f2(b.sh.def)}`],
-      ['Forma local / visita', `${f2(inp.home.form)} / ${f2(inp.away.form)}`],
+      ['Ataque/defensa ajustados por rival (local)', b.sh.adj ? `${f2(b.sh.adj.att)} / ${f2(b.sh.adj.def)} · ${b.sh.adj.n} partidos` : 'sin datos'],
+      ['Ataque/defensa ajustados por rival (visita)', b.sa.adj ? `${f2(b.sa.adj.att)} / ${f2(b.sa.adj.def)} · ${b.sa.adj.n} partidos` : 'sin datos'],
+      ['Forma local / visita', `${f2(inp.home.formUsed ?? inp.home.form)} / ${f2(inp.away.formUsed ?? inp.away.form)}`],
       ['Bajas local / visita', `${inp.home.bajas.toFixed(0)}% / ${inp.away.bajas.toFixed(0)}%`],
       ['Goles esperados solo modelo', `${f2(b.lh)} - ${f2(b.la)}`],
       ['Goles esperados finales', `${f2(res.lh)} - ${f2(res.la)}`],
@@ -334,6 +344,40 @@
     ];
     $('calc').innerHTML = rows.map(r => `<span class="k">${r[0]}</span><span class="num">${r[1]}</span>`).join('');
   }
+
+  // ---------- Datos siempre frescos ----------
+  let refreshing = false;
+  async function refreshAll() {
+    if (refreshing) return;
+    refreshing = true; $('refresh').disabled = true; $('upd').textContent = 'Actualizando…';
+    try {
+      D.refresh();
+      await loadLeague();
+      if (S.current && S.ctx) { await analyzeMatch(S.current[0], S.current[1], true); }
+      if (window.RadarDayUI) await window.RadarDayUI.rerun();
+    } finally { refreshing = false; $('refresh').disabled = false; showUpdated(); }
+  }
+  function showUpdated() {
+    const t = D.state.lastFetch;
+    if (!t) { $('upd').textContent = 'Cargando datos…'; return; }
+    const min = Math.floor((Date.now() - t.getTime()) / 60000);
+    $('upd').textContent = `Datos de ESPN de las ${t.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}${min >= 1 ? ` (hace ${min} min)` : ''}`;
+  }
+  $('refresh').addEventListener('click', refreshAll);
+  const setThemeIcon = () => { $('theme').textContent = document.documentElement.dataset.theme === 'light' ? '☾' : '☀︎'; };
+  $('theme').addEventListener('click', () => {
+    const light = document.documentElement.dataset.theme !== 'light';
+    if (light) document.documentElement.dataset.theme = 'light'; else delete document.documentElement.dataset.theme;
+    try { localStorage.setItem('radar.theme', light ? 'light' : 'dark'); } catch (e) { /* sin almacenamiento */ }
+    setThemeIcon();
+  });
+  setThemeIcon();
+  setInterval(showUpdated, 15000);
+  // Cada 5 minutos con la página abierta, y al volver a la pestaña si ya pasó ese tiempo.
+  const stale = () => !D.state.lastFetch || Date.now() - D.state.lastFetch.getTime() > 5 * 60000;
+  setInterval(() => { if (document.visibilityState === 'visible' && stale()) refreshAll(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && stale()) refreshAll(); });
+  setTimeout(showUpdated, 1500);
 
   // Para el pronóstico del día: abrir el análisis completo de un partido.
   window.RadarApp = {

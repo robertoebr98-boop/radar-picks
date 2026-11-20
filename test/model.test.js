@@ -66,6 +66,20 @@ t('alias: Köln, Chivas, Inter', () => {
   assert.strictEqual(D.findTeam(list, 'chivas').id, '219');
   assert.strictEqual(D.findTeam(list, 'Inter').id, '110');
 });
+t('fuerza ajustada: anotar a un rival fuerte vale más', () => {
+  const opp = id => id === 'fuerte' ? { att: 1.3, def: 0.7 } : { att: 0.8, def: 1.3 };
+  const ms = r => Array.from({ length: 8 }, (_, i) => ({ date: `2026-10-${10 + i}`, homeId: 'A', awayId: r, hs: 2, as: 1 }));
+  const vsFuerte = M.adjustedStrength(ms('fuerte'), 'A', opp, 1.4), vsDebil = M.adjustedStrength(ms('debil'), 'A', opp, 1.4);
+  assert(vsFuerte.att > vsDebil.att && vsFuerte.def < vsDebil.def);
+});
+t('lo reciente pesa más', () => {
+  const opp = () => ({ att: 1, def: 1 });
+  const old = Array.from({ length: 10 }, (_, i) => ({ date: `2026-08-${10 + i}`, homeId: 'A', awayId: 'B', hs: 0, as: 0 }));
+  const recent = Array.from({ length: 4 }, (_, i) => ({ date: `2026-11-${10 + i}`, homeId: 'A', awayId: 'B', hs: 3, as: 0 }));
+  const a = M.adjustedStrength([...old, ...recent], 'A', opp, 1.4);
+  const flat = (4 * 3) / (14 * 1.4 * 1.1);
+  assert(a.att > flat, `${a.att} ${flat}`);
+});
 
 // ---- Pronóstico del día ----
 global.RadarModel = M; global.RadarData = D;

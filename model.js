@@ -17,6 +17,9 @@
     DOBLETE_PROB: 0.70,
     MIN_ODD: 1.30,
     VALUE_EV: 1.05,
+    HALF_LIFE: 8,        // cada 8 partidos atrás, el partido pesa la mitad
+    ADJ_PRIOR_GOALS: 2,  // goles 'fantasma' para no sobrerreaccionar
+    ADJ_WEIGHT: 0.5,     // mezcla fuerza ajustada por rival vs tabla
   };
 
   function poissonPmf(k, lambda) {
@@ -123,16 +126,47 @@
   }
 
   // inputs: {avg, home:{team, split, form, bajas}, away:{...}}  bajas en % (0-30) que resta al ataque propio
+  // Fuerza ajustada por rival y con peso a lo reciente.
+  // matches: [{date, homeId, awayId, hs, as}] completados (cualquier orden). oppStrength(id) -> {att, def}.
+  function adjustedStrength(matches, teamId, oppStrength, avg) {
+    const done = matches.filter(m => m.hs != null && m.as != null).sort((a, b) => new Date(b.date) - new Date(a.date));
+    let gf = 0, ga = 0, expF = 0, expA = 0, n = 0;
+    done.forEach((m, i) => {
+      const home = m.homeId === teamId;
+      const opp = oppStrength(home ? m.awayId : m.homeId) || { att: 1, def: 1 };
+      const w = Math.pow(0.5, i / CFG.HALF_LIFE) * (m.prevSeason ? 0.6 : 1);
+      gf += w * (home ? m.hs : m.as); ga += w * (home ? m.as : m.hs);
+      expF += w * avg * (home ? CFG.HFA_HOME : CFG.HFA_AWAY) * opp.def;
+      expA += w * avg * (home ? CFG.HFA_AWAY : CFG.HFA_HOME) * opp.att;
+      n++;
+    });
+    const K = CFG.ADJ_PRIOR_GOALS;
+    return { att: (gf + K) / (expF + K), def: (ga + K) / (expA + K), n };
+  }
+
   function expectedGoals(inp) {
     const sh = strength(inp.home.team, inp.avg, inp.home.split, CFG.HFA_HOME);
     const sa = strength(inp.away.team, inp.avg, inp.away.split, CFG.HFA_AWAY);
+    // Si hay fuerza ajustada por rival, se mezcla 50/50 y la forma pesa la mitad (lo reciente ya cuenta más).
+    let fh = inp.home.form || 1, fa = inp.away.form || 1;
+    for (const [s, adj] of [[sh, inp.home.adj], [sa, inp.away.adj]]) {
+      if (adj && adj.n >= 4) {
+        s.rawAtt = s.att; s.rawDef = s.def;
+        s.att = (1 - CFG.ADJ_WEIGHT) * s.att + CFG.ADJ_WEIGHT * adj.att;
+        s.def = (1 - CFG.ADJ_WEIGHT) * s.def + CFG.ADJ_WEIGHT * adj.def;
+        s.adj = adj;
+      }
+    }
+    if (inp.home.adj && inp.home.adj.n >= 4) fh = Math.sqrt(fh);
+    if (inp.away.adj && inp.away.adj.n >= 4) fa = Math.sqrt(fa);
+    inp.home.formUsed = fh; inp.away.formUsed = fa;
     const bh = 1 - (inp.home.bajas || 0) / 100;
     const ba = 1 - (inp.away.bajas || 0) / 100;
     // La baja defensiva rival sube un poco tu ataque (mitad del efecto).
     const bhDef = 1 + (inp.away.bajasDef || 0) / 200;
     const baDef = 1 + (inp.home.bajasDef || 0) / 200;
-    const lh = inp.avg * CFG.HFA_HOME * sh.att * sa.def * (inp.home.form || 1) * bh * bhDef;
-    const la = inp.avg * CFG.HFA_AWAY * sa.att * sh.def * (inp.away.form || 1) * ba * baDef;
+    const lh = inp.avg * CFG.HFA_HOME * sh.att * sa.def * fh * bh * bhDef;
+    const la = inp.avg * CFG.HFA_AWAY * sa.att * sh.def * fa * ba * baDef;
     return { lh: clampL(lh), la: clampL(la), sh, sa };
   }
 
@@ -232,7 +266,7 @@
     return { tag: 'sin-valor', ev, minNeeded };
   }
 
-  const api = { CFG, poissonPmf, scoreMatrix, sumWhere, marketDefs, leagueAverage, strength, formFactor, expectedGoals, americanToDecimal, noVig, fitLambdas, analyze, verdict };
+  const api = { CFG, adjustedStrength, poissonPmf, scoreMatrix, sumWhere, marketDefs, leagueAverage, strength, formFactor, expectedGoals, americanToDecimal, noVig, fitLambdas, analyze, verdict };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarModel = api;
 })(typeof window !== 'undefined' ? window : globalThis);

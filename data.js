@@ -21,18 +21,26 @@
 
   const DEMO = typeof location !== 'undefined' && /[?&]demo=1/.test(location.search);
   const cache = new Map();
+  const TTL = 2 * 60 * 1000; // en el navegador, los datos se reutilizan máximo 2 minutos
+  let freshToken = null;
+  const state = { lastFetch: null };
+
+  // Borra lo guardado y pide todo de nuevo a ESPN, saltando la caché del servidor.
+  function refresh() { cache.clear(); freshToken = String(Date.now()); }
 
   async function get(path, params = {}) {
     const key = path + JSON.stringify(params);
-    if (cache.has(key)) return cache.get(key);
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.t < TTL) return hit.p;
     const p = (async () => {
       if (DEMO) {
         const name = path.replace(/^apis\/(site\/v2|v2)\/sports\/soccer\/[^/]+\//, '').replace(/\//g, '_') + (params.fixture ? '_fixture' : '') + (params.season ? '_prev' : '');
         const r = await fetch(`mock/${name}.json`);
         if (!r.ok) throw new Error('sin datos demo: ' + name);
+        state.lastFetch = new Date();
         return r.json();
       }
-      const qs = new URLSearchParams({ path, ...params });
+      const qs = new URLSearchParams({ path, ...params, ...(freshToken ? { fresh: freshToken } : {}) });
       let r;
       try { r = await fetch(`/api/espn?${qs}`); } catch (e) { r = null; }
       if (!r || r.status === 404) {
@@ -41,9 +49,11 @@
         r = await fetch(`https://site.api.espn.com/${path}${q2 ? '?' + q2 : ''}`);
       }
       if (!r.ok) throw new Error(`ESPN respondió ${r.status}`);
-      return r.json();
+      const j = await r.json();
+      state.lastFetch = new Date();
+      return j;
     })();
-    cache.set(key, p);
+    cache.set(key, { p, t: Date.now() });
     p.catch(() => cache.delete(key));
     return p;
   }
@@ -257,7 +267,7 @@
     return parts.length >= 2 ? [parts[0].trim(), parts.slice(1).join(' ').trim()] : null;
   }
 
-  const api = { LEAGUES, DEMO, get, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
+  const api = { LEAGUES, DEMO, get, refresh, state, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarData = api;
 })(typeof window !== 'undefined' ? window : globalThis);

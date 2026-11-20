@@ -4,38 +4,40 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Radar de picks</title>
+<meta name="theme-color" content="#070d1a">
 <meta name="description" content="Escribe el partido y el Radar trae forma, estadísticas, modelo Poisson y picks con valor.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%230e7c86'/><circle cx='16' cy='16' r='8' fill='none' stroke='white' stroke-width='2.5'/><circle cx='16' cy='16' r='2.5' fill='white'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%2322d39a'/><circle cx='16' cy='16' r='8' fill='none' stroke='white' stroke-width='2.5'/><circle cx='16' cy='16' r='2.5' fill='white'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<script>try{if(localStorage.getItem("radar.theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}</script>
 <style>
 :root{
-  --bg:#e9edf2; --card:#ffffff; --sub:#f2f4f8; --line:#dce1e9; --line2:#c8cfdb;
-  --fg:#111827; --muted:#5b6578; --accent:#0e7c86; --accent-soft:#dff2f3;
-  --home:#c98a00; --away:#2b4fb8;
-  --good:#11804f; --good-soft:#dcf2e6; --warn:#9a5b00; --warn-soft:#fbf0db; --bad:#b4372f; --bad-soft:#fbe4e1;
-  --board:#121a2a; --board-fg:#f3f5fa; --board-muted:#9aa6bd;
+  /* Tema oscuro por defecto: azul marino con acentos verdes */
+  --bg:#070d1a; --bg2:#0b1426; --card:#0f1a2e; --sub:#14223a; --line:#1e2f4c; --line2:#2a3f62;
+  --fg:#e6edf7; --muted:#8a9bb8; --accent:#22d39a; --accent-2:#14b884; --accent-soft:#0f3a33; --on-accent:#04140f;
+  --home:#f6c453; --away:#7aa7ff;
+  --good:#22d39a; --good-soft:#0f3a2f; --warn:#f2b45a; --warn-soft:#3a2b12; --bad:#ff7b72; --bad-soft:#3d1c1c;
+  --board:#0a1222; --board-fg:#f3f6fb; --board-muted:#8a9bb8;
+  --shadow:0 1px 0 rgb(255 255 255/.03) inset, 0 8px 24px rgb(0 0 0/.35);
   --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif; --f-body:"Inter",system-ui,sans-serif; --f-num:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0b1019; --card:#141b28; --sub:#1a2232; --line:#263044; --line2:#334058;
-  --fg:#e9edf4; --muted:#98a3b7; --accent:#3cc1cc; --accent-soft:#123138;
-  --home:#f0b429; --away:#7d9cff;
-  --good:#3fcf8e; --good-soft:#123326; --warn:#f2b45a; --warn-soft:#352812; --bad:#ff7b72; --bad-soft:#3a1b1a;
-  --board:#070b12; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0b1019; --card:#141b28; --sub:#1a2232; --line:#263044; --line2:#334058;
-  --fg:#e9edf4; --muted:#98a3b7; --accent:#3cc1cc; --accent-soft:#123138;
-  --home:#f0b429; --away:#7d9cff;
-  --good:#3fcf8e; --good-soft:#123326; --warn:#f2b45a; --warn-soft:#352812; --bad:#ff7b72; --bad-soft:#3a1b1a;
-  --board:#070b12; color-scheme:dark}
+:root[data-theme="light"]{
+  --bg:#dfe5ee; --bg2:#e8edf4; --card:#f7f9fc; --sub:#eceff5; --line:#d3dae6; --line2:#bcc6d6;
+  --fg:#0f172a; --muted:#56627a; --accent:#0e9f6e; --accent-2:#0b8a5f; --accent-soft:#d5f2e7; --on-accent:#ffffff;
+  --home:#b37800; --away:#2b55c9;
+  --good:#0e8a5c; --good-soft:#d8f1e6; --warn:#9a5b00; --warn-soft:#f8ecd6; --bad:#b4372f; --bad-soft:#f8e1de;
+  --board:#0f1a2e; --board-fg:#f3f6fb; --board-muted:#9aa9c2;
+  --shadow:0 4px 14px rgb(15 23 42/.08);
+  color-scheme:light;
+}
 *{box-sizing:border-box}
 html,body{margin:0}
-body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45}
+body{background:radial-gradient(1200px 600px at 50% -200px,var(--bg2),var(--bg)) fixed,var(--bg);min-height:100vh;color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45}
 .wrap{max-width:600px;margin:0 auto;padding-block:18px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
 h1{font-family:var(--f-display);font-weight:700;font-size:28px;letter-spacing:.02em;text-transform:uppercase;margin:0;display:flex;align-items:center;gap:10px}
 h1 svg{flex-shrink:0}
 h2{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:.02em;text-transform:uppercase;margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -53,7 +55,7 @@ input:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid 
 select.in,input.in{padding:10px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sub);color:var(--fg);font-weight:500}
 input.in{flex:1 1 220px}
 select.in{flex:1 1 160px}
-.btn{border:0;border-radius:10px;padding:10px 16px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+.btn{border:0;border-radius:10px;padding:10px 16px;background:linear-gradient(180deg,var(--accent),var(--accent-2));color:var(--on-accent);font-weight:700;cursor:pointer}
 .btn.ghost{background:var(--sub);color:var(--fg);border:1px solid var(--line2)}
 .btn:disabled{opacity:.5;cursor:default}
 .fixtures{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto}
@@ -66,7 +68,7 @@ select.in{flex:1 1 160px}
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* Marcador */
-.board{background:var(--board);color:var(--board-fg);border-radius:18px;padding:18px 16px 14px;display:flex;flex-direction:column;gap:12px}
+.board{background:linear-gradient(160deg,var(--board),#0d1f36 60%,#0b2a2a);border:1px solid var(--line);box-shadow:var(--shadow);color:var(--board-fg);border-radius:18px;padding:18px 16px 14px;display:flex;flex-direction:column;gap:12px}
 .board .comp{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--board-muted);text-align:center;font-weight:600}
 .teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;text-align:center}
 .teams img{width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 6px}
@@ -77,13 +79,13 @@ select.in{flex:1 1 160px}
 .xslab{font-size:10.5px;color:var(--board-muted);margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
 .bar3{display:flex;height:30px;border-radius:8px;overflow:hidden;font-family:var(--f-num);font-size:12px;font-weight:600}
 .bar3 div{display:flex;align-items:center;justify-content:center;min-width:0;white-space:nowrap;overflow:hidden}
-.bar3 .bh{background:var(--home);color:#1a1300} .bar3 .bd{background:#5b6578;color:#fff} .bar3 .ba{background:var(--away);color:#fff}
+.bar3 .bh{background:var(--home);color:#1a1300} .bar3 .bd{background:#3b4a63;color:#fff} .bar3 .ba{background:var(--away);color:#0a1430}
 .mkt{font-size:11.5px;color:var(--board-muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .meta{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
 .pill{font-size:11px;padding:3px 9px;border-radius:999px;background:#ffffff14;color:var(--board-fg);white-space:nowrap}
 
 /* Veredicto */
-.verdict{border:2px solid var(--accent)}
+.verdict{border:1px solid var(--accent);box-shadow:0 0 0 1px var(--accent-soft),var(--shadow)}
 .vrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--sub)}
 .vrow.ok{background:var(--good-soft)}
 .vrow.val{background:var(--accent-soft)}
@@ -123,7 +125,7 @@ hr{border:0;border-top:1px solid var(--line);margin:2px 0;width:100%}
 .ftitle .dots{margin-left:auto}
 .dots{display:flex;gap:4px}
 .dot{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
-.dot.W{background:var(--good)} .dot.D{background:#7a8497} .dot.L{background:var(--bad)}
+.dot.W{background:var(--good);color:var(--on-accent)} .dot.D{background:#7a8497} .dot.L{background:var(--bad)}
 .fl{font-size:12.5px;display:flex;justify-content:space-between;gap:6px;border-top:1px solid var(--line);padding-top:5px}
 .stats{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;font-size:12.5px;align-items:center}
 .stats .hd{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
@@ -147,7 +149,7 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
 .hidden{display:none !important}
 
 /* Pronóstico del día */
-.tk{border:2px solid var(--accent);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.tk{border:1px solid var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent 140px);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
 .tk .sum{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px}
 .leg{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 10px;border-radius:9px;background:var(--sub);font-size:12.5px}
 .leg .m{font-size:11px;color:var(--muted)}
@@ -155,15 +157,26 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
 .dm:hover{border-color:var(--line2)}
 .dm .m{font-size:11px;color:var(--muted)}
 .lgh{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:4px}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.fresh{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.fresh .live{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.btn.sm{padding:6px 10px;font-size:12px}
+.icon{background:var(--sub);border:1px solid var(--line2);color:var(--fg);border-radius:8px;padding:6px 9px;cursor:pointer;font-size:12px}
 .foot{font-size:11.5px;color:var(--muted);text-align:center}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="top">
   <h1>
-    <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="#fff" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="#fff"/></svg>
+    <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--on-accent)" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="var(--on-accent)"/></svg>
     Radar de picks
   </h1>
+    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span>
+      <button class="btn sm" id="refresh">Actualizar</button>
+      <button class="icon" id="theme" aria-label="Cambiar tema claro u oscuro">☀︎</button></div>
+  </div>
 
   <section class="card search" aria-label="Buscar partido">
     <div class="row">
@@ -238,8 +251,8 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
     <section class="card" aria-label="Método">
       <h2>Cómo calcula</h2>
       <ol class="ev">
-        <li><b>Fuerza contra la liga.</b> Goles a favor y en contra de cada equipo contra el promedio de su liga, con 40% de peso a su rendimiento como local o visita.</li>
-        <li><b>Forma.</b> Puntos de los últimos 5 contra su promedio de temporada, suavizado (^0.25).</li>
+        <li><b>Fuerza contra la liga, ajustada por rival.</b> Mitad tabla (goles a favor y en contra vs promedio de la liga, con peso a local/visita) y mitad partido por partido: cada resultado se ajusta por la calidad del rival y los partidos recientes pesan más (cada 8 partidos atrás pesan la mitad; la temporada pasada cuenta al 60%).</li>
+        <li><b>Forma.</b> Puntos de los últimos 5 contra su promedio de temporada, suavizado (^0.25; a la mitad cuando ya hay ajuste por rival).</li>
         <li><b>Dixon-Coles.</b> Corrige los marcadores bajos (0-0, 1-0, 1-1) que Poisson subestima.</li>
         <li><b>La casa pesa la mitad.</b> Si hay momios de resultado, la probabilidad final es 50% modelo + 50% casa sin margen.</li>
         <li><b>Filtros.</b> Doblete: prob ≥ 70% en el peor caso y momio ≥ 1.30. Valor: prob × momio ≥ 1.05. 45–55% es volado.</li>
