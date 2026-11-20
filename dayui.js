@@ -20,15 +20,23 @@
       ...Y.US.map(u => `<option value="${u.id}">${u.name} (momios de la casa)</option>`),
       '<option value="all">Todo (fútbol + NBA + NFL)</option>',
     ].join('');
-    $('dgo').addEventListener('click', run);
+    $('dgo').addEventListener('click', () => run());
   }
 
   let ran = false;
-  window.RadarDayUI = { rerun: () => ran ? run() : Promise.resolve() };
+  window.RadarDayUI = {
+    rerun: () => ran ? run(true) : Promise.resolve(),
+    clear: () => { ran = false; $('dout').innerHTML = ''; $('dmsg').innerHTML = ''; },
+  };
 
-  async function run() {
+  async function run(quiet) {
     const v = $('dlg').value, date = $('dday').value;
     ran = true;
+    if (!quiet) {
+      // El pronóstico reemplaza al análisis de un partido.
+      if (window.RadarApp) window.RadarApp.hideMatch();
+      $('dout').classList.remove('hidden');
+    }
     if (!date) return;
     const ids = v === 'main' ? MAIN : v === 'soccer' ? SOCCER : v === 'all' ? [...SOCCER, 'nba', 'nfl'] : [v];
     $('dout').innerHTML = '';

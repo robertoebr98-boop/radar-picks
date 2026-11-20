@@ -18,15 +18,19 @@
     sel.innerHTML = D.LEAGUES.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
     const params = new URLSearchParams(location.search);
     sel.value = params.get('lg') || store.get('radar.lg', 'mex.1');
+    // Al recargar, la página arranca limpia (sin partido ni pronóstico abiertos).
+    history.replaceState(null, '', D.DEMO ? '?demo=1' : location.pathname);
     sel.addEventListener('change', () => { store.set('radar.lg', sel.value); loadLeague(); });
     $('go').addEventListener('click', onSearch);
     $('q').addEventListener('keydown', e => { if (e.key === 'Enter') onSearch(); });
     $('clearodds').addEventListener('click', () => { S.odds = {}; saveOdds(); render(); });
     $('espnodds').addEventListener('click', () => { applyEspnOdds(true); render(); });
-    loadLeague().then(() => {
-      const h = params.get('h'), a = params.get('a');
-      if (h && a) analyzeMatch(h, a);
+    $('back').addEventListener('click', () => {
+      $('result').classList.add('hidden'); $('dout').classList.remove('hidden');
+      $('daycard').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+    $('closeres').addEventListener('click', () => { $('result').classList.add('hidden'); S.current = null; });
+    loadLeague();
   }
 
   async function loadLeague() {
@@ -75,7 +79,6 @@
     const home = S.teams.find(t => t.id === hId) || { id: hId, name: 'Local' };
     const away = S.teams.find(t => t.id === aId) || { id: aId, name: 'Visita' };
     $('searchmsg').innerHTML = `<div class="loading"><span class="spin"></span>Juntando datos de ${esc(home.name)} vs ${esc(away.name)}…</div>`;
-    history.replaceState(null, '', `?lg=${lg}&h=${hId}&a=${aId}${D.DEMO ? '&demo=1' : ''}`);
     try {
       const [st, sh, sa, fxh] = await Promise.all([
         D.standings(lg), D.schedule(lg, hId), D.schedule(lg, aId),
@@ -130,12 +133,19 @@
       };
       S.oddsFrom = null;
       S.key = `radar.odds.${lg}.${hId}.${aId}`;
-      S.odds = store.get(S.key, {});
-      S.out = store.get(S.key + '.out', {});
-      S.bajas = store.get(S.key + '.bajas', { home: 0, away: 0 });
+      // Momios y bajas se recuerdan solo mientras la página está abierta.
+      S.odds = MEMO[S.key] || {};
+      S.out = MEMO[S.key + '.out'] || {};
+      S.bajas = MEMO[S.key + '.bajas'] || { home: 0, away: 0 };
       if (!Object.keys(S.odds).length) applyEspnOdds(false);
       $('searchmsg').innerHTML = '';
       $('result').classList.remove('hidden');
+      if (!quiet) {
+        // Un análisis reemplaza al pronóstico del día (desde el pronóstico, se puede volver).
+        $('dout').classList.add('hidden');
+        $('back').classList.toggle('hidden', !S.fromDay);
+        if (!S.fromDay && window.RadarDayUI) window.RadarDayUI.clear();
+      }
       render();
       if (!quiet) $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
       S.current = [hId, aId];
@@ -158,7 +168,8 @@
     saveOdds();
   }
 
-  function saveOdds() { if (S.key) store.set(S.key, S.odds); }
+  const MEMO = {};
+  function saveOdds() { if (S.key) MEMO[S.key] = S.odds; }
 
   // ---------- Modelo ----------
   function bajasPct(side) {
@@ -358,11 +369,11 @@
     $('players').innerHTML = col('home', c.home) + col('away', c.away);
     $('players').querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', () => {
       if (cb.checked) S.out[cb.dataset.k] = 1; else delete S.out[cb.dataset.k];
-      store.set(S.key + '.out', S.out); setTimeout(render);
+      MEMO[S.key + '.out'] = S.out; setTimeout(render);
     }));
     $('players').querySelectorAll('input[data-side]').forEach(inp => inp.addEventListener('change', () => {
       const n = Math.max(0, Math.min(40, parseFloat(inp.value) || 0));
-      S.bajas[inp.dataset.side] = n; store.set(S.key + '.bajas', S.bajas); setTimeout(render);
+      S.bajas[inp.dataset.side] = n; MEMO[S.key + '.bajas'] = S.bajas; setTimeout(render);
     }));
   }
 
@@ -395,7 +406,7 @@
     try {
       D.refresh();
       await loadLeague();
-      if (S.current && S.ctx) { await analyzeMatch(S.current[0], S.current[1], true); }
+      if (S.current && S.ctx && !$('result').classList.contains('hidden')) { await analyzeMatch(S.current[0], S.current[1], true); }
       if (window.RadarDayUI) await window.RadarDayUI.rerun();
     } finally { refreshing = false; $('refresh').disabled = false; showUpdated(); }
   }
@@ -425,8 +436,10 @@
   window.RadarApp = {
     async openMatch(lg, hId, aId) {
       if ($('league').value !== lg || S.lg !== lg) { $('league').value = lg; store.set('radar.lg', lg); await loadLeague(); }
-      return analyzeMatch(hId, aId);
+      S.fromDay = true;
+      try { return await analyzeMatch(hId, aId); } finally { S.fromDay = false; }
     },
+    hideMatch() { $('result').classList.add('hidden'); $('back').classList.add('hidden'); },
   };
 
   init();

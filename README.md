@@ -13,7 +13,7 @@ Elige fecha y liga (o todas): analiza cada partido con tabla + forma + momios de
 - **Backtest:** `backtest/RESULTADOS.md`.
 
 ## Calculadora de ticket
-Toca + en cualquier mercado, en el ticket sugerido o en los picks con valor. Escribe el monto y el momio de cada pata: muestra momio total, pago, ganancia, probabilidad del modelo y valor esperado. Se guarda en tu navegador.
+Toca + en cualquier mercado, en el ticket sugerido o en los picks con valor. Columna provisional automática + columna Draftea. Al recargar la página todo arranca limpio (ticket, momios capturados, bajas); solo se recuerdan la liga y el tema.
 
 ## Archivos
 - `slip.js`: calculadora de ticket.

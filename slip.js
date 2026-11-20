@@ -8,14 +8,9 @@
   const KEY = 'radar.slip';
   let S = load();
 
-  function load() {
-    let st;
-    try { st = JSON.parse(localStorage.getItem(KEY)) || { stake: 10, legs: [] }; } catch (e) { st = { stake: 10, legs: [] }; }
-    // Tickets guardados con la versión anterior: su momio pasa a provisional.
-    for (const l of st.legs) if (l.prov == null && l.odd) { l.prov = l.odd; l.provSrc = l.provSrc || 'anterior'; delete l.odd; }
-    return st;
-  }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* sin almacenamiento */ } }
+  // El ticket vive solo mientras la página está abierta: al recargar arranca vacío.
+  function load() { try { localStorage.removeItem(KEY); } catch (e) { /* nada */ } return { stake: 10, legs: [] }; }
+  function save() { /* sin guardado entre recargas */ }
 
   // leg: {key, matchKey, match, label, p, odd}
   function add(leg) {
