@@ -66,4 +66,24 @@ t('alias: Köln, Chivas, Inter', () => {
   assert.strictEqual(D.findTeam(list, 'chivas').id, '219');
   assert.strictEqual(D.findTeam(list, 'Inter').id, '110');
 });
+
+// ---- Pronóstico del día ----
+global.RadarModel = M; global.RadarData = D;
+const Y = require('../day.js');
+t('ticket: una pata por partido, momio ≥1.30, máx 10', () => {
+  const st = new Map([['1', { gp: 15, gf: 32, ga: 10, pts: 35 }], ['2', { gp: 15, gf: 12, ga: 28, pts: 12 }], ['3', { gp: 15, gf: 21, ga: 21, pts: 21 }], ['4', { gp: 15, gf: 20, ga: 22, pts: 20 }]]);
+  const ev = (id, h, a, odds) => ({ id, date: '2026-11-21T20:00Z', homeId: h, awayId: a, homeName: 'Equipo ' + h, awayName: 'Equipo ' + a, homeForm: 'WWWDW', awayForm: 'LLDLL', odds });
+  const ms = [];
+  for (let i = 0; i < 14; i++) ms.push(Y.soccerMatch(ev(String(i), i % 2 ? '1' : '3', i % 2 ? '2' : '4', null), st, 1.4));
+  const tk = Y.buildTicket(ms);
+  assert(tk.legs.length <= 10);
+  assert(tk.legs.every(x => (x.leg.odd || x.leg.minNeeded) >= 1.30 && x.leg.tag !== 'volado' && x.leg.p >= 0.62));
+  assert.strictEqual(new Set(tk.legs.map(x => x.match.ev.id)).size, tk.legs.length);
+  const strong = ms[1];
+  assert.strictEqual(strong.winner.id, '1');
+});
+t('NBA: probabilidad sin margen', () => {
+  const r = Y.usMatch({ id: 'x', homeName: 'Lakers', awayName: 'Jazz', odds: { ml: { home: -300, away: 240 }, total: {} } });
+  assert(r.winner.id === '1' && r.winner.p > 0.7 && r.winner.p < 0.76);
+});
 console.log(`\n${n} pruebas OK`);

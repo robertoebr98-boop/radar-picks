@@ -4,7 +4,11 @@ Escribe el partido ("Tigres vs América") y la página trae tabla, forma de los 
 
 **Costo: $0.** Datos públicos de ESPN (sin API key), modelo propio en JavaScript (sin IA), hosting gratis en Vercel.
 
+## Pronóstico del día
+Elige fecha y liga (o todas): analiza cada partido con tabla + forma + momios de ESPN, da el ganador probable y arma un ticket sugerido (una pata por partido, prob ≥ 62%, momio ≥ 1.30, sin volados, máx 10). NBA y NFL: probabilidad de la casa sin margen.
+
 ## Archivos
+- `day.js`, `dayui.js`: pronóstico del día.
 - `index.html`, `app.js`: la página.
 - `model.js`: el modelo (Poisson, Dixon-Coles, mezcla con mercado, filtros).
 - `data.js`: lectura de ESPN.

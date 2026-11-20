@@ -107,6 +107,8 @@
       homeName: home.team?.displayName || '', awayName: away.team?.displayName || '',
       homeLogo: logoOf(home.team), awayLogo: logoOf(away.team),
       hs: num(home.score), as: num(away.score),
+      homeForm: typeof home.form === 'string' ? home.form : '', awayForm: typeof away.form === 'string' ? away.form : '',
+      homeAbbr: home.team?.abbreviation || '', awayAbbr: away.team?.abbreviation || '',
       odds: parseOdds((c.odds || [])[0]),
       venue: c.venue?.fullName || '',
     };

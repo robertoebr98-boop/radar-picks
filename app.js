@@ -335,5 +335,13 @@
     $('calc').innerHTML = rows.map(r => `<span class="k">${r[0]}</span><span class="num">${r[1]}</span>`).join('');
   }
 
+  // Para el pronóstico del día: abrir el análisis completo de un partido.
+  window.RadarApp = {
+    async openMatch(lg, hId, aId) {
+      if ($('league').value !== lg || S.lg !== lg) { $('league').value = lg; store.set('radar.lg', lg); await loadLeague(); }
+      return analyzeMatch(hId, aId);
+    },
+  };
+
   init();
 })();
