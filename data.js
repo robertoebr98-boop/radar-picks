@@ -139,9 +139,15 @@
   function yyyymmdd(dt) { return dt.toISOString().slice(0, 10).replace(/-/g, ''); }
 
   async function upcoming(lg, days = 7) {
-    const now = new Date(), end = new Date(now.getTime() + days * 864e5);
-    const d = await get(site(lg, 'scoreboard'), { dates: `${yyyymmdd(now)}-${yyyymmdd(end)}` });
-    return (d.events || []).map(parseEvent).filter(e => !e.completed);
+    // ESPN rechaza rangos de fechas en fútbol: se pide día por día y se juntan.
+    const now = Date.now(), seen = new Set(), out = [];
+    const days_ = await Promise.all(Array.from({ length: days + 1 }, (_, i) =>
+      get(site(lg, 'scoreboard'), { dates: yyyymmdd(new Date(now + i * 864e5)) }).catch(() => ({ events: [] }))));
+    for (const d of days_) for (const ev of d.events || []) {
+      if (seen.has(ev.id)) continue; seen.add(ev.id);
+      const e = parseEvent(ev); if (!e.completed) out.push(e);
+    }
+    return out.sort((a, b) => new Date(a.date) - new Date(b.date));
   }
 
   async function summary(lg, eventId) {
@@ -194,8 +200,36 @@
     return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
+  // Nombres en español / alemán / apodos → como los escribe ESPN (en inglés).
+  const ALIASES = {
+    'koln': 'cologne', 'colonia': 'cologne', 'fc koln': 'cologne', '1 fc koln': 'cologne',
+    'bayern munchen': 'bayern', 'munchen': 'bayern', 'bayern munich': 'bayern', 'munich': 'bayern',
+    'gladbach': 'monchengladbach', 'hamburgo': 'hamburg', 'hsv': 'hamburg', 'maguncia': 'mainz',
+    'stuttgart': 'stuttgart', 'dortmund': 'dortmund', 'bvb': 'dortmund', 'leipzig': 'leipzig',
+    'inter': 'internazionale', 'inter de milan': 'internazionale', 'milan': 'ac milan', 'napoles': 'napoli',
+    'roma': 'as roma', 'juve': 'juventus', 'florencia': 'fiorentina', 'atalanta': 'atalanta',
+    'psg': 'paris saint germain', 'paris': 'paris saint germain', 'marsella': 'marseille', 'lyon': 'lyon',
+    'monaco': 'monaco', 'niza': 'nice',
+    'atletico': 'atletico madrid', 'atleti': 'atletico madrid', 'atletico de madrid': 'atletico madrid',
+    'barca': 'barcelona', 'madrid': 'real madrid', 'athletic': 'athletic club', 'athletic bilbao': 'athletic club',
+    'betis': 'real betis', 'sociedad': 'real sociedad', 'celta': 'celta vigo',
+    'man city': 'manchester city', 'city': 'manchester city', 'man united': 'manchester united', 'man utd': 'manchester united',
+    'united': 'manchester united', 'spurs': 'tottenham', 'wolves': 'wolverhampton',
+    'chivas': 'guadalajara', 'pumas': 'unam', 'rayados': 'monterrey', 'tuzos': 'pachuca', 'xolos': 'tijuana',
+    'gallos': 'queretaro', 'bravos': 'juarez', 'diablos': 'toluca', 'santos': 'santos laguna', 'rojinegros': 'atlas',
+    'la maquina': 'cruz azul', 'aguilas': 'america', 'tigres': 'tigres', 'tuneros': 'san luis', 'atletico san luis': 'san luis',
+    'franja': 'puebla', 'esmeraldas': 'leon', 'rayos': 'necaxa', 'mazatlan': 'mazatlan',
+    'benfica': 'benfica', 'oporto': 'porto', 'sporting': 'sporting',
+  };
+
   function findTeam(list, q) {
-    const n = norm(q);
+    const raw = norm(q);
+    const n = ALIASES[raw] || raw;
+    const alt = n !== raw ? raw : null;
+    return findTeamNorm(list, n) || (alt && findTeamNorm(list, alt));
+  }
+
+  function findTeamNorm(list, n) {
     if (!n) return null;
     let best = null, bestScore = 0;
     for (const t of list) {

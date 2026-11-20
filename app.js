@@ -62,7 +62,7 @@
     if (!pair) { $('searchmsg').innerHTML = '<div class="err">Escribe "Local vs Visita", por ejemplo: Tigres vs América.</div>'; return; }
     const h = D.findTeam(S.teams, pair[0]), a = D.findTeam(S.teams, pair[1]);
     if (!h || !a || h.id === a.id) {
-      $('searchmsg').innerHTML = `<div class="err">No encontré ${!h ? `"${esc(pair[0])}"` : `"${esc(pair[1])}"`} en ${esc($('league').selectedOptions[0].text)}. Revisa la liga o el nombre.</div>`;
+      $('searchmsg').innerHTML = `<div class="err">No encontré ${!h ? `"${esc(pair[0])}"` : `"${esc(pair[1])}"`} en ${esc($('league').selectedOptions[0].text)}. Equipos de esta liga: ${S.teams.map(t => esc(t.short || t.name)).join(', ')}.</div>`;
       return;
     }
     $('searchmsg').innerHTML = '';

@@ -57,4 +57,13 @@ t('parse de odds formato scoreboard', () => {
   const o = D.parseOdds({ provider: { name: 'DK' }, overUnder: 2.5, moneyline: { home: { close: { odds: '-120' } }, away: { close: { odds: '+300' } }, draw: { close: { odds: '+250' } } }, total: { over: { close: { odds: '-105' } }, under: { close: { odds: '-115' } } } });
   assert.strictEqual(o.ml.home, '-120'); assert.strictEqual(o.total.line, 2.5); assert.strictEqual(o.total.over, '-105');
 });
+t('alias: Köln, Chivas, Inter', () => {
+  const list = [{ id: '122', name: 'FC Cologne', short: 'Cologne', abbr: 'KOE' }, { id: '132', name: 'Bayern Munich', short: 'Bayern', abbr: 'MUN' }, { id: '268', name: 'Borussia Mönchengladbach', short: 'Gladbach', abbr: 'BMG' }, { id: '219', name: 'Guadalajara', short: 'Guadalajara', abbr: 'GDL' }, { id: '110', name: 'Internazionale', short: 'Internazionale', abbr: 'INT' }];
+  assert.strictEqual(D.findTeam(list, 'Köln').id, '122');
+  assert.strictEqual(D.findTeam(list, 'koln').id, '122');
+  assert.strictEqual(D.findTeam(list, 'Bayern München').id, '132');
+  assert.strictEqual(D.findTeam(list, 'Mönchengladbach').id, '268');
+  assert.strictEqual(D.findTeam(list, 'chivas').id, '219');
+  assert.strictEqual(D.findTeam(list, 'Inter').id, '110');
+});
 console.log(`\n${n} pruebas OK`);
