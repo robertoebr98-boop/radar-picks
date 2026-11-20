@@ -113,4 +113,17 @@ t('NBA: probabilidad sin margen', () => {
   const r = Y.usMatch({ id: 'x', homeName: 'Lakers', awayName: 'Jazz', odds: { ml: { home: -300, away: 240 }, total: {} } });
   assert(r.winner.id === '1' && r.winner.p > 0.7 && r.winner.p < 0.76);
 });
+t('día de sorpresas: estrategia defensiva', () => {
+  const st = new Map([['1', { gp: 15, gf: 32, ga: 10, pts: 35 }], ['2', { gp: 15, gf: 12, ga: 28, pts: 12 }]]);
+  const played = [];
+  for (let i = 0; i < 5; i++) {
+    const m = Y.soccerMatch({ id: 'p' + i, date: '2026-11-20T15:00Z', homeId: '1', awayId: '2', homeName: 'Fuerte', awayName: 'Débil', homeForm: 'WWWWW', awayForm: 'LLLLL', odds: null, completed: true, hs: 0, as: 2 }, st, 1.4);
+    played.push(m);
+  }
+  const rv = Y.reviewPlayed(played);
+  assert(rv.n === 5 && rv.surprises.length === 5, JSON.stringify([rv.n, rv.hits, rv.surprises.length]));
+  const r = Y.strategy(rv);
+  assert.strictEqual(r.mode, 'defensivo'); assert(r.MAX_LEGS <= 4 && r.MIN_P >= 0.72);
+  assert.strictEqual(Y.strategy({ n: 1 }).mode, 'normal');
+});
 console.log(`\n${n} pruebas OK`);

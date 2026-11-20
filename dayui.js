@@ -52,15 +52,21 @@
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
   function render(r, date) {
-    if (!r.matches.length) { $('dout').innerHTML = '<p class="note">No hay partidos ese día en lo que elegiste.</p>'; return; }
-    const t = r.ticket;
-    let html = `<div class="tk"><h3>Ticket sugerido · ${t.legs.length} patas</h3>`;
+    const t = r.ticket, R = r.rules || Y.TICKET;
+    const nothing = !r.matches.length && !(r.played || []).length && !(r.live || []).length;
+    if (nothing) { $('dout').innerHTML = '<p class="note">No hay partidos ese día en lo que elegiste.</p>'; return; }
+    let html = '';
+    // Estrategia del día según cómo le fue al modelo en los partidos ya jugados.
+    const modeCls = { normal: 'ok', cauteloso: 'vol', defensivo: 'bad' }[R.mode] || 'no';
+    html += `<div class="strat"><span class="st ${modeCls}">Estrategia: ${esc(R.mode || 'normal')}</span> <span>${esc(R.why || '')}</span></div>`;
+    if (!r.matches.length) html += '<p class="note">Ya no quedan partidos por empezar ese día. Abajo ves cómo le fue al modelo.</p>';
+    html += `<div class="tk"><h3>Ticket sugerido · ${t.legs.length} patas · solo partidos por empezar</h3>`;
     if (t.legs.length) {
       html += t.legs.map(x => `<div class="leg"><span><b>${esc(x.leg.label)}</b><br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)} · ${hour(x.match.ev.date)}</span></span>
         <span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'pide ≥ ' + f2(x.leg.minNeeded)}</span></span>${btn(x)}</div>`).join('');
       html += `<button class="btn ghost sm" id="addall">Pasar el ticket sugerido a la calculadora</button>`;
       html += `<div class="sum"><span>Prob. de acertar todo: <b class="num">${pct(t.p)}</b></span><span>Momio total aprox.: <b class="num">${f2(t.odd)}</b></span></div>
-        <p class="note">Una pata por partido. Solo patas con prob ≥ 62% y momio ≥ 1.30, sin volados, máximo 10. "Pide ≥" es el momio mínimo que debe darte Draftea o Novibet; si da menos, quita esa pata.</p>`;
+        <p class="note">Una pata por partido. Solo patas con prob ≥ ${Math.round(R.MIN_P * 100)}% y momio ≥ 1.30, sin volados, máximo ${R.MAX_LEGS}. "Pide ≥" es el momio mínimo que debe darte Draftea o Novibet; si da menos, quita esa pata.</p>`;
     } else html += '<p class="note">Ningún partido de este día pasa los filtros. Mejor no apostar.</p>';
     html += '</div>';
 
@@ -69,7 +75,7 @@
         <span style="text-align:right"><b class="num">${f2(x.leg.odd)}</b><br><span class="m">prob ${pct(x.leg.p)} · valor ${f2(x.leg.ev)}</span></span>${btn(x)}</div>`).join('');
     }
 
-    html += '<h3>Todos los partidos</h3>';
+    if (r.matches.length) html += '<h3>Por empezar</h3>';
     let lg = '';
     for (const m of r.matches) {
       if (m.league !== lg) { lg = m.league; html += `<div class="lgh">${esc(lg)}</div>`; }
@@ -81,6 +87,20 @@
       const clickable = !m.us && !m.noData;
       html += `<button class="dm" ${clickable ? `data-lg="${m.lg}" data-h="${m.ev.homeId}" data-a="${m.ev.awayId}"` : 'disabled'}>
         <span><b>${matchTitle(m)}</b> <span class="m">${hour(m.ev.date)}</span><br><span class="m">${sub}</span></span><span style="text-align:right">${right}</span></button>`;
+    }
+    if ((r.live || []).length) {
+      html += '<h3>En juego (fuera del ticket)</h3>' + r.live.map(m => `<div class="dm" style="cursor:default"><span><b>${matchTitle(m)}</b> <span class="m">${esc(m.league)} · ${esc(m.ev.detail || 'en juego')}</span></span><span class="num">${m.ev.hs ?? '-'}-${m.ev.as ?? '-'}</span></div>`).join('');
+    }
+    if ((r.played || []).length) {
+      const rv = r.review;
+      html += `<h3>Ya jugados hoy${rv && rv.n ? ` · el modelo acertó ${rv.hits} de ${rv.n} patas` : ''}</h3>`;
+      html += r.played.map(m => {
+        const L = m.reviewLeg;
+        const tag = L ? `<span class="st ${L.hit ? 'ok' : 'bad'}">${L.hit ? '✓' : '✗'} ${esc(L.label)} ${pct(L.p)}</span>` : '<span class="m">sin pata sugerida</span>';
+        return `<div class="dm" style="cursor:default"><span><b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br>${tag}</span><b class="num">${esc(m.result || '-')}</b></div>`;
+      }).join('');
+      if (rv && rv.surprises.length) html += `<p class="note">Sorpresas: ${rv.surprises.map(x => `${esc(x.label)} (${pct(x.p)}) no ganó`).join(' · ')}.</p>`;
+      html += '<p class="note">La revisión usa la tabla de hoy, que ya incluye estos resultados; es una guía, no una medición exacta.</p>';
     }
     html += '<p class="note">Toca un partido de fútbol para ver el análisis completo y capturar tus momios. NBA y NFL usan la probabilidad de la casa sin margen (sin modelo propio todavía). El pronóstico del día usa tabla + forma + momios; el análisis completo además usa local/visita y bajas.</p>';
     $('dout').innerHTML = html;

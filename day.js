@@ -75,31 +75,69 @@
   function shortName(n) { return String(n || '').replace(/^(FC|CF|AC|AS|SC|SV|1\. FC|TSG|VfB|RB)\s+/, '').replace(/\s+(FC|CF|UANL)$/, ''); }
 
   // Elige la mejor pata de cada partido (una por partido: patas del mismo partido se mueven juntas).
-  function bestLeg(match) {
-    const ok = match.legs.filter(l => l.tag !== 'volado' && l.tag !== 'momio-bajo' && l.est >= TICKET.MIN_ODD && l.p >= TICKET.MIN_P);
+  function bestLeg(match, rules = TICKET) {
+    const ok = match.legs.filter(l => l.tag !== 'volado' && l.tag !== 'momio-bajo' && l.est >= TICKET.MIN_ODD && l.p >= rules.MIN_P);
     if (!ok.length) return null;
     // Prioridad: valor real con momio > probabilidad en el peor caso.
     ok.sort((a, b) => ((b.ev && b.ev >= M.CFG.VALUE_EV) - (a.ev && a.ev >= M.CFG.VALUE_EV)) || (b.worst - a.worst) || (b.p - a.p));
     return ok[0];
   }
 
-  function buildTicket(matches) {
+  function buildTicket(matches, rules = TICKET) {
     const cands = [];
     for (const m of matches) {
-      const leg = bestLeg(m);
+      const leg = bestLeg(m, rules);
       if (leg) cands.push({ match: m, leg });
     }
     cands.sort((a, b) => b.leg.worst - a.leg.worst || b.leg.p - a.leg.p);
-    const legs = cands.slice(0, TICKET.MAX_LEGS);
+    const legs = cands.slice(0, rules.MAX_LEGS);
     const p = legs.reduce((s, x) => s * x.leg.p, 1);
     const odd = legs.reduce((s, x) => s * (x.leg.odd || x.leg.minNeeded), 1);
-    return { legs, p, odd, skipped: cands.length - legs.length };
+    return { legs, p, odd, skipped: cands.length - legs.length, rules };
   }
 
   function valuePicks(matches) {
     const out = [];
     for (const m of matches) for (const l of m.legs) if (l.odd && l.ev >= M.CFG.VALUE_EV && l.tag !== 'volado' && l.odd >= TICKET.MIN_ODD && !m.us) out.push({ match: m, leg: l });
     return out.sort((a, b) => b.leg.ev - a.leg.ev).slice(0, 10);
+  }
+
+  // ¿Cómo le fue al modelo hoy? Revisa la pata que habría sugerido en cada partido ya jugado.
+  function reviewPlayed(played) {
+    const defs = M.marketDefs('L', 'V');
+    const fnOf = id => (defs.find(d => d.id === id) || {}).fn;
+    const legs = [], surprises = [];
+    for (const m of played) {
+      const hs = m.ev.hs, as = m.ev.as;
+      if (hs == null || as == null) continue;
+      m.result = `${hs}-${as}`;
+      const leg = m.legs && m.legs.length ? bestLeg(m) : null;
+      if (leg) {
+        const fn = m.us ? (leg.id === '1' ? (h, a) => h > a : (h, a) => a > h) : fnOf(leg.id);
+        if (fn) { const hit = !!fn(hs, as); legs.push({ match: m, leg, hit }); m.reviewLeg = { label: leg.label, p: leg.p, hit }; }
+      }
+      if (m.winner && m.winner.p >= 0.6) {
+        const w = m.winner.id, ok = w === '1' ? hs > as : w === '2' ? as > hs : hs === as;
+        if (!ok) surprises.push({ match: m, label: m.winner.label, p: m.winner.p });
+      }
+    }
+    const n = legs.length, hits = legs.filter(x => x.hit).length;
+    const expected = n ? legs.reduce((a, x) => a + x.leg.p, 0) / n : null;
+    return { n, hits, rate: n ? hits / n : null, expected, legs, surprises };
+  }
+
+  // Estrategia "dentro de lo seguro": si hoy el modelo falla más de lo normal, se suben los filtros.
+  function strategy(review) {
+    const r = { ...TICKET, mode: 'normal', why: 'Sin partidos jugados hoy para comparar: reglas normales.' };
+    if (!review || review.n < 3) return r;
+    const gap = review.expected - review.rate;
+    if (gap > 0.15 || review.surprises.length >= 3) {
+      return { ...r, MIN_P: 0.72, MAX_LEGS: 4, mode: 'defensivo', why: `Día de sorpresas: acertó ${review.hits} de ${review.n} patas (esperaba ${(review.expected * 100).toFixed(0)}%) y ${review.surprises.length} favorito(s) cayeron. Ticket corto y solo patas ≥ 72%.` };
+    }
+    if (gap > 0.05) {
+      return { ...r, MIN_P: 0.67, MAX_LEGS: 6, mode: 'cauteloso', why: `Hoy acertó ${review.hits} de ${review.n} patas, un poco menos de lo esperado. Patas ≥ 67% y máximo 6.` };
+    }
+    return { ...r, mode: 'normal', why: `Hoy el modelo va bien: ${review.hits} de ${review.n} patas acertadas (esperaba ${(review.expected * 100).toFixed(0)}%). Reglas normales.` };
   }
 
   function ymd(dateStr) { return String(dateStr).replace(/-/g, ''); }
@@ -133,10 +171,17 @@
       done++; if (onProgress) onProgress(done, leagueIds.length);
     }));
     out.sort((a, b) => new Date(a.ev.date) - new Date(b.ev.date));
-    return { matches: out, ticket: buildTicket(out), value: valuePicks(out), errors };
+    // Solo entran al ticket los partidos que no han empezado.
+    const now = Date.now();
+    const upcoming = out.filter(m => !m.ev.completed && m.ev.state !== 'in' && new Date(m.ev.date).getTime() > now);
+    const live = out.filter(m => !m.ev.completed && (m.ev.state === 'in' || (m.ev.state !== 'post' && new Date(m.ev.date).getTime() <= now)));
+    const played = out.filter(m => m.ev.completed);
+    const review = reviewPlayed(played);
+    const rules = strategy(review);
+    return { matches: upcoming, live, played, review, rules, ticket: buildTicket(upcoming, rules), value: valuePicks(upcoming), errors };
   }
 
-  const api = { US, TICKET, runDay, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
+  const api = { US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarDay = api;
 })(typeof window !== 'undefined' ? window : globalThis);

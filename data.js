@@ -236,7 +236,7 @@
       get(site(lg, 'scoreboard'), { dates: yyyymmdd(new Date(now + i * 864e5)) }).catch(() => ({ events: [] }))));
     for (const d of days_) for (const ev of d.events || []) {
       if (seen.has(ev.id)) continue; seen.add(ev.id);
-      const e = parseEvent(ev); if (!e.completed) out.push(e);
+      const e = parseEvent(ev); if (!e.completed && e.state !== 'in' && new Date(e.date).getTime() > Date.now()) out.push(e);
     }
     return out.sort((a, b) => new Date(a.date) - new Date(b.date));
   }
