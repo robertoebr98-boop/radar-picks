@@ -250,7 +250,7 @@
         <td><span class="mk">${esc(mk.label)}</span><span class="rg">justo ${f2(mk.fair)}</span> ${tagHtml(v)}</td>
         <td class="num">${pct(mk.p)} <span class="rg">/ ${pct(mk.worst)}</span><div class="meter"><i style="width:${mk.p * 100}%"></i>${be ? `<s style="left:${be}%"></s>` : ''}</div></td>
         <td><input class="odd" inputmode="decimal" data-id="${mk.id}" value="${odd || ''}" placeholder="—" aria-label="Momio ${esc(mk.label)}"></td>
-        <td class="addc">${slipBtn({ key: `${matchKey}:${mk.id}`, matchKey, match: matchName, label: mk.label, p: mk.p, odd: odd || null })}</td></tr>`;
+        <td class="addc">${slipBtn({ key: `${matchKey}:${mk.id}`, matchKey, match: matchName, label: mk.label, p: mk.p, ...provOf(mk, odd) })}</td></tr>`;
     }
     $('mkts').innerHTML = html;
     $('oddsrc').textContent = S.oddsFrom ? `momios precargados: ${S.oddsFrom}` : '';
@@ -260,6 +260,14 @@
       if (d && d > 1) S.odds[inp.dataset.id] = +d.toFixed(2); else delete S.odds[inp.dataset.id];
       saveOdds(); setTimeout(render);
     }));
+  }
+
+  // Momio provisional: el que ya hay (capturado o ESPN), si no el consenso de casas, si no el justo menos el margen típico.
+  function provOf(mk, odd) {
+    if (odd) return { prov: odd, provSrc: S.oddsFrom && S.odds[mk.id] === odd ? S.oddsFrom : 'capturado' };
+    const c = S.ctx, i = { '1': 0, 'X': 1, '2': 2 }[mk.id];
+    if (c && c.cons && i != null && c.cons.probs[i] > 0) return { prov: +(1 / c.cons.probs[i] / 1.05).toFixed(2), provSrc: 'consenso' };
+    return { prov: +(mk.fair / 1.06).toFixed(2), provSrc: 'estimado' };
   }
 
   function slipBtn(leg) {

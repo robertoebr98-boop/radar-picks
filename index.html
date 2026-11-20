@@ -167,10 +167,15 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
 /* Calculadora de ticket */
 .addb{border:1px solid var(--line2);background:var(--sub);color:var(--accent);font-weight:700;border-radius:8px;width:30px;height:30px;cursor:pointer;flex-shrink:0;font-size:16px;line-height:1}
 .addb.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.sl{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--sub);font-size:12.5px}
+.sl{display:grid;grid-template-columns:1fr 62px 64px 22px;gap:8px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--sub);font-size:12.5px}
 .sl .m{font-size:11px;color:var(--muted)}
 .sl .x{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px}
-.sgrid{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:13px;padding:10px 12px;border-radius:10px;border:1px solid var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent)}
+.slh{display:grid;grid-template-columns:1fr 62px 64px 22px;gap:8px;padding:0 10px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.slh span:nth-child(2),.slh span:nth-child(3),.sl .pv{text-align:right}
+.sl input.odd{width:64px}
+.sgrid .hd{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:right}
+.sgrid.one{grid-template-columns:1fr auto;border-color:var(--line);background:var(--sub)}
+.sgrid{display:grid;grid-template-columns:1fr auto auto;gap:6px 12px;font-size:13px;padding:10px 12px;border-radius:10px;border:1px solid var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent)}
 .sgrid b{text-align:right}
 .good{color:var(--good)} .bad{color:var(--bad)}
 .warnbox{background:var(--warn-soft);color:var(--warn);padding:8px 10px;border-radius:10px;font-size:12px}

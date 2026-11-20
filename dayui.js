@@ -45,7 +45,7 @@
 
   function legOf(x) {
     const m = x.match, mk = `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`;
-    return { key: `${mk}:${x.leg.id}`, matchKey: mk, match: `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`, label: x.leg.label, p: x.leg.p, odd: x.leg.odd || null };
+    return { key: `${mk}:${x.leg.id}`, matchKey: mk, match: `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`, label: x.leg.label, p: x.leg.p, prov: +(x.leg.odd || x.leg.est).toFixed(2), provSrc: x.leg.odd ? 'ESPN' : 'estimado' };
   }
   function btn(x) { return window.RadarSlipBtn ? window.RadarSlipBtn(legOf(x)) : ''; }
 

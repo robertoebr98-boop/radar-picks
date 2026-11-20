@@ -8,37 +8,53 @@
   const KEY = 'radar.slip';
   let S = load();
 
-  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || { stake: 10, legs: [] }; } catch (e) { return { stake: 10, legs: [] }; } }
+  function load() {
+    let st;
+    try { st = JSON.parse(localStorage.getItem(KEY)) || { stake: 10, legs: [] }; } catch (e) { st = { stake: 10, legs: [] }; }
+    // Tickets guardados con la versión anterior: su momio pasa a provisional.
+    for (const l of st.legs) if (l.prov == null && l.odd) { l.prov = l.odd; l.provSrc = l.provSrc || 'anterior'; delete l.odd; }
+    return st;
+  }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* sin almacenamiento */ } }
 
   // leg: {key, matchKey, match, label, p, odd}
   function add(leg) {
     if (S.legs.some(l => l.key === leg.key)) { remove(leg.key); return false; }
-    S.legs.push({ ...leg, odd: leg.odd ? +(+leg.odd).toFixed(2) : null });
+    S.legs.push({ ...leg, prov: leg.prov ? +(+leg.prov).toFixed(2) : null, dft: null });
     save(); render(); return true;
   }
   function remove(key) { S.legs = S.legs.filter(l => l.key !== key); save(); render(); }
   function has(key) { return S.legs.some(l => l.key === key); }
 
+  const used = l => l.dft || l.prov;
+
+  function totals(stake, legs, oddOf) {
+    const ready = legs.length && legs.every(l => oddOf(l) > 1);
+    const odd = legs.reduce((a, l) => a * (oddOf(l) || 1), 1);
+    const p = legs.reduce((a, l) => a * (l.p || 0), 1);
+    const payout = stake * odd;
+    return { ready, odd, p, payout, profit: payout - stake, ev: p * payout - stake };
+  }
+
   function calc() {
     const stake = Math.max(0, +S.stake || 0);
     const legs = S.legs;
-    const ready = legs.length && legs.every(l => l.odd > 1);
-    const odd = legs.reduce((a, l) => a * (l.odd || 1), 1);
-    const p = legs.reduce((a, l) => a * (l.p || 0), 1);
-    const payout = stake * odd;
+    const prov = totals(stake, legs, l => l.prov);
+    const real = totals(stake, legs, used);
+    const withDft = legs.filter(l => l.dft).length;
     const sameMatch = legs.length !== new Set(legs.map(l => l.matchKey)).size;
-    const low = legs.filter(l => l.odd && l.odd < 1.30);
+    const low = legs.filter(l => used(l) && used(l) < 1.30);
     const volados = legs.filter(l => l.p >= 0.45 && l.p <= 0.55);
-    return { stake, odd, p, payout, profit: payout - stake, ev: p * payout - stake, fair: p > 0 ? 1 / p : null, ready, sameMatch, low, volados };
+    return { stake, prov, real, withDft, p: real.p, fair: real.p > 0 ? 1 / real.p : null, sameMatch, low, volados };
   }
 
   function render() {
     const c = calc();
-    const legsHtml = S.legs.map(l => `
+    const legsHtml = `<div class="slh"><span>Pata</span><span>Prov.</span><span>Draftea</span><span></span></div>` + S.legs.map(l => `
       <div class="sl">
         <span><b>${esc(l.label)}</b><br><span class="m">${esc(l.match)} · modelo ${pct(l.p)}</span></span>
-        <input class="odd" inputmode="decimal" data-k="${esc(l.key)}" value="${l.odd || ''}" placeholder="momio" aria-label="Momio de ${esc(l.label)}">
+        <span class="pv"><b class="num">${l.prov ? l.prov.toFixed(2) : '-'}</b><br><span class="m">${esc(l.provSrc || '')}</span></span>
+        <input class="odd" inputmode="decimal" data-k="${esc(l.key)}" value="${l.dft || ''}" placeholder="—" aria-label="Momio Draftea de ${esc(l.label)}">
         <button class="x" data-rm="${esc(l.key)}" aria-label="Quitar ${esc(l.label)}">×</button>
       </div>`).join('');
     const warn = [];
@@ -46,29 +62,34 @@
     if (c.low.length) warn.push(`${c.low.length} pata(s) con momio menor a 1.30.`);
     if (c.volados.length) warn.push(`${c.volados.length} volado(s) (45–55%): son los que tumban tickets.`);
     if (c.sameMatch) warn.push('Hay patas del mismo partido: se mueven juntas, la probabilidad real puede ser distinta.');
-    if (S.legs.some(l => !l.odd)) warn.push('Escribe el momio de Draftea/Novibet en cada pata.');
-    const evCls = c.ev >= 0 ? 'good' : 'bad';
+    if (c.withDft < S.legs.length) warn.push(`${S.legs.length - c.withDft} pata(s) sin momio de Draftea: se calcula con el provisional.`);
+    const P = c.prov, R = c.real;
+    const evCls = R.ev >= 0 ? 'good' : 'bad';
+    const sign = x => (x >= 0 ? '+' : '') + money(x);
     $('slipbody').innerHTML = S.legs.length ? `
       ${legsHtml}
       <div class="sgrid">
-        <span>Momio total</span><b class="num">${c.ready ? c.odd.toFixed(2) : '-'}</b>
-        <span>Pago si pega</span><b class="num">${c.ready ? money(c.payout) : '-'}</b>
-        <span>Ganancia</span><b class="num good">${c.ready ? money(c.profit) : '-'}</b>
+        <span></span><span class="hd">Provisional</span><span class="hd">Con Draftea</span>
+        <span>Momio total</span><b class="num">${P.ready ? P.odd.toFixed(2) : '-'}</b><b class="num">${R.ready ? R.odd.toFixed(2) : '-'}</b>
+        <span>Pago si pega</span><b class="num">${P.ready ? money(P.payout) : '-'}</b><b class="num">${R.ready ? money(R.payout) : '-'}</b>
+        <span>Ganancia</span><b class="num good">${P.ready ? money(P.profit) : '-'}</b><b class="num good">${R.ready ? money(R.profit) : '-'}</b>
+        <span>Valor esperado</span><b class="num ${P.ev >= 0 ? 'good' : 'bad'}">${P.ready ? sign(P.ev) : '-'}</b><b class="num ${evCls}">${R.ready ? sign(R.ev) : '-'}</b>
+      </div>
+      <div class="sgrid one">
         <span>Prob. del modelo de acertar todo</span><b class="num">${pct(c.p)}</b>
         <span>Momio justo según el modelo</span><b class="num">${c.fair ? c.fair.toFixed(2) : '-'}</b>
-        <span>Valor esperado</span><b class="num ${evCls}">${c.ready ? (c.ev >= 0 ? '+' : '') + money(c.ev) : '-'}</b>
       </div>
-      <p class="note">${c.ready ? (c.ev >= 0 ? `Con estos momios, en promedio ganarías ${money(c.ev)} por ticket a la larga.` : `Con estos momios, en promedio pierdes ${money(-c.ev)} por ticket a la larga: la casa paga menos de lo que vale.`) : ''} Pega 1 de cada ${c.p > 0 ? Math.round(1 / c.p).toLocaleString('es-MX') : '∞'} veces.</p>
+      <p class="note">"Con Draftea" usa tu momio donde lo escribiste y el provisional en el resto (${c.withDft} de ${S.legs.length} con Draftea). ${R.ready ? (R.ev >= 0 ? `En promedio ganarías ${money(R.ev)} por ticket a la larga.` : `En promedio pierdes ${money(-R.ev)} por ticket a la larga: la casa paga menos de lo que vale.`) : ''} Pega 1 de cada ${c.p > 0 ? Math.round(1 / c.p).toLocaleString('es-MX') : '∞'} veces.</p>
       ${warn.length ? `<div class="warnbox">${warn.map(esc).join('<br>')}</div>` : ''}
       <button class="btn ghost sm" id="slipclear">Vaciar ticket</button>`
       : '<p class="note">Toca <b>+</b> en cualquier mercado, en el ticket sugerido o en los picks con valor para armar tu ticket.</p>';
     $('slipstake').value = S.stake;
     $('slipbar').classList.toggle('hidden', !S.legs.length);
-    $('slipbar').innerHTML = `<span><b>Ticket</b> · ${S.legs.length} pata${S.legs.length === 1 ? '' : 's'} · momio ${c.ready ? c.odd.toFixed(2) : '-'}</span><span>${c.ready ? `Ganas <b>${money(c.profit)}</b>` : 'faltan momios'} · prob ${pct(c.p)}</span>`;
+    $('slipbar').innerHTML = `<span><b>Ticket</b> · ${S.legs.length} pata${S.legs.length === 1 ? '' : 's'} · momio ${R.ready ? R.odd.toFixed(2) : '-'}</span><span>${R.ready ? `Ganas <b>${money(R.profit)}</b>` : 'faltan momios'} · prob ${pct(c.p)}</span>`;
     $('slipbody').querySelectorAll('input.odd').forEach(i => i.addEventListener('change', () => {
       const n = parseFloat(i.value.replace(',', '.'));
       const l = S.legs.find(x => x.key === i.dataset.k);
-      if (l) { l.odd = isFinite(n) && n > 1 ? +n.toFixed(2) : null; save(); setTimeout(render); }
+      if (l) { l.dft = isFinite(n) && n > 1 ? +n.toFixed(2) : null; save(); setTimeout(render); }
     }));
     $('slipbody').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => remove(b.dataset.rm)));
     const clr = $('slipclear'); if (clr) clr.addEventListener('click', () => { S.legs = []; save(); render(); });
