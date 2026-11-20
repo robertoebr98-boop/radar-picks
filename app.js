@@ -234,7 +234,7 @@
     $('hs').textContent = `${c.sth.rank ? c.sth.rank + 'º · ' : ''}${c.sth.pts} pts`;
     $('as').textContent = `${c.sta.rank ? c.sta.rank + 'º · ' : ''}${c.sta.pts} pts`;
     // Centro del tablero: goles esperados de cada uno (cambian partido a partido) en lugar de un marcador exacto.
-    $('xs').textContent = `${f2(res.lh)} – ${f2(res.la)}`;
+
     const hn = c.home.short || c.home.name, an = c.away.short || c.away.name;
     // Resultado probable = el lado con más probabilidad en el 1X2 y, si es victoria, por cuántos goles.
     const lead = p1 >= px && p1 >= p2 ? 1 : p2 >= px ? -1 : 0;
@@ -243,6 +243,7 @@
     // Marcador estimado: redondeo de los goles esperados (p. ej. 1.20–1.76 → 1-2), con la prob. de ese marcador exacto.
     const rh = Math.round(res.lh), ra = Math.round(res.la);
     const rp = (M.scoreMatrix(res.lh, res.la)[rh] || [])[ra] || 0;
+    $('xs').innerHTML = `${f2(res.lh)} – ${f2(res.la)}<div class="xsr">≈ ${rh} - ${ra}</div>`;
     $('xslab').textContent = 'goles esperados';
     $('bar3').innerHTML = `<div class="bh" style="width:${p1 * 100}%">${pct(p1)}</div><div class="bd" style="width:${px * 100}%">${pct(px)}</div><div class="ba" style="width:${p2 * 100}%">${pct(p2)}</div>`;
     $('mkt').innerHTML = res.market
