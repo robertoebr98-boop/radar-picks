@@ -104,6 +104,8 @@
     render();
   }
 
-  window.RadarSlip = { add, remove, has, refresh: render, calc: () => calc() };
+  function snapshot() { return JSON.parse(JSON.stringify({ stake: S.stake, legs: S.legs })); }
+  function loadTicket(t) { S = { stake: +t.stake || 10, legs: JSON.parse(JSON.stringify(t.legs || [])) }; render(); }
+  window.RadarSlip = { add, remove, has, refresh: render, calc: () => calc(), snapshot, load: loadTicket };
   init();
 })();

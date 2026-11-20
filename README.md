@@ -15,7 +15,11 @@ Elige fecha y liga (o todas): analiza cada partido con tabla + forma + momios de
 ## Calculadora de ticket
 Toca + en cualquier mercado, en el ticket sugerido o en los picks con valor. Columna provisional automática + columna Draftea. Al recargar la página todo arranca limpio (ticket, momios capturados, bajas); solo se recuerdan la liga y el tema.
 
+## Mis tickets
+Guarda el ticket de la calculadora (nombre, patas, momios, monto, pago) en este navegador. Abrir, marcar ganado/perdido/pendiente, borrar, balance. Exportar/Importar archivo para pasarlos entre celular y PC.
+
 ## Archivos
+- `saved.js`: Mis tickets.
 - `slip.js`: calculadora de ticket.
 - `day.js`, `dayui.js`: pronóstico del día.
 - `index.html`, `app.js`: la página.

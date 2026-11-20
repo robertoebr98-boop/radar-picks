@@ -185,6 +185,13 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
 .leg{grid-template-columns:1fr auto auto !important}
 td.addc{width:34px;padding-left:6px}
 .strat{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;font-size:12.5px;padding:10px 12px;border-radius:10px;background:var(--sub);border:1px solid var(--line)}
+.sv{border:1px solid var(--line);border-radius:12px;background:var(--sub);overflow:hidden}
+.svh{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;width:100%;padding:10px 12px;background:transparent;border:0;cursor:pointer;text-align:left;font-size:13px}
+.svh .m,.svleg .m{font-size:11px;color:var(--muted)}
+.svlegs{display:flex;flex-direction:column;gap:4px;padding:0 12px 8px}
+.svleg{display:flex;justify-content:space-between;gap:10px;font-size:12px;border-top:1px solid var(--line);padding-top:5px}
+.svact{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px}
+.btn.danger{background:var(--bad-soft);color:var(--bad);border-color:var(--bad)}
 .foot{font-size:11.5px;color:var(--muted);text-align:center}
 </style>
 </head>
@@ -294,6 +301,22 @@ td.addc{width:34px;padding-left:6px}
     <h2>Calculadora de ticket <small>monto + patas → lo que ganarías</small></h2>
     <label class="bj">Monto a apostar <span class="money"><span>$</span><input class="in" id="slipstake" inputmode="decimal" type="number" min="0" step="1" value="10" style="width:110px"></span></label>
     <div id="slipbody" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="row">
+      <input class="in" id="savename" placeholder="Nombre (ej. Liga MX sábado)" aria-label="Nombre del ticket" style="flex:1 1 180px">
+      <button class="btn" id="savebtn">Guardar ticket</button>
+    </div>
+  </section>
+
+  <section class="card" id="saved" aria-label="Mis tickets">
+    <h2>Mis tickets <small>guardados en este navegador</small></h2>
+    <div id="savedmsg"></div>
+    <div id="savedlist" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="row">
+      <button class="btn ghost sm" id="exportbtn">Exportar archivo</button>
+      <button class="btn ghost sm" id="importbtn">Importar archivo</button>
+      <input type="file" id="importfile" accept="application/json,.json" class="hidden">
+    </div>
+    <p class="note">Para pasarlos entre celular y PC: "Exportar archivo" en uno y "Importar archivo" en el otro.</p>
   </section>
 
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
@@ -305,5 +328,6 @@ td.addc{width:34px;padding-left:6px}
 <script src="day.js"></script>
 <script src="dayui.js"></script>
 <script src="slip.js"></script>
+<script src="saved.js"></script>
 </body>
 </html>
