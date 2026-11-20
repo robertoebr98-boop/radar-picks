@@ -285,6 +285,7 @@
   }
 
   function slipBtn(leg) {
+    if (window.RadarSlip && window.RadarSlip.register) window.RadarSlip.register(leg);
     return `<button class="addb" data-slip="${esc(leg.key)}" data-leg="${esc(JSON.stringify(leg))}" aria-label="Agregar ${esc(leg.label)} al ticket">+</button>`;
   }
   window.RadarSlipBtn = slipBtn;

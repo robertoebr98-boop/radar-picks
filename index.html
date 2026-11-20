@@ -178,6 +178,11 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
 .sgrid{display:grid;grid-template-columns:1fr auto auto;gap:6px 12px;font-size:13px;padding:10px 12px;border-radius:10px;border:1px solid var(--accent);background:linear-gradient(180deg,var(--accent-soft),transparent)}
 .sgrid b{text-align:right}
 .good{color:var(--good)} .bad{color:var(--bad)}
+.opt{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;border:1px dashed var(--accent);background:var(--sub)}
+.opth{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.opth label{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.optl{margin:0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.optl .m{color:var(--muted);font-size:11.5px}
 .warnbox{background:var(--warn-soft);color:var(--warn);padding:8px 10px;border-radius:10px;font-size:12px}
 .money{display:inline-flex;align-items:center;gap:4px;font-weight:600}
 .slipbar{position:fixed;left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom,0px));width:min(568px,calc(100% - 32px));display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 14px;border-radius:14px;border:1px solid var(--accent);background:var(--card);color:var(--fg);font-size:12.5px;box-shadow:0 10px 30px rgb(0 0 0/.45);cursor:pointer;z-index:10;text-align:left}
@@ -349,6 +354,7 @@ td.addc{width:34px;padding-left:6px}
 <script src="day.js"></script>
 <script src="props.js"></script>
 <script src="dayui.js"></script>
+<script src="optimize.js"></script>
 <script src="slip.js"></script>
 <script src="saved.js"></script>
 </body>

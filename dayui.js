@@ -68,6 +68,28 @@
 
   let SHOWN = [];
 
+  // Mercados principales de un partido con su momio provisional (ESPN, consenso o estimado).
+  const MAIN_MK = ['1', 'X', '2', '1X', 'X2', '12', 'O1.5', 'O2.5', 'O3.5', 'U2.5', 'U3.5', 'BTTS', 'NBTTS', 'H0.5', 'A0.5', 'H1.5', 'A1.5', '1&O1.5', '2&O1.5'];
+  function mainRows(m) {
+    const rows = [];
+    if (!m.res) return rows;
+    for (const mk of m.res.markets) {
+      if (!MAIN_MK.includes(mk.id)) continue;
+      let prov = m.odds && m.odds[mk.id], src = 'ESPN';
+      const ci = { '1': 0, 'X': 1, '2': 2 }[mk.id];
+      if (!prov && m.cons && ci != null) { prov = 1 / m.cons.probs[ci] / 1.05; src = 'consenso'; }
+      if (!prov) { prov = mk.fair / 1.06; src = 'estimado'; }
+      rows.push({ id: mk.id, group: mk.group, label: mk.label, p: mk.p, prov, src });
+    }
+    return rows;
+  }
+  // Le pasa a la calculadora las alternativas de cada partido para el botón Optimizar.
+  function registerMatch(m) {
+    if (!window.RadarSlip || !window.RadarSlip.register) return;
+    const mk = `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`, title = `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`;
+    for (const x of mainRows(m)) window.RadarSlip.register({ key: `${mk}:${x.id}`, matchKey: mk, match: title, label: x.label, p: x.p, prov: +x.prov.toFixed(2), provSrc: x.src });
+  }
+
   // Mercados de un partido: resultado, goles y ambos anotan (modelo + momio real si hay) y
   // córners, remates y tarjetas (modelo de conteos; momio estimado porque no hay fuente gratis).
   async function openMarkets(idx, btn) {
@@ -77,18 +99,7 @@
     if (!open || panel.dataset.done) return;
     panel.innerHTML = '<div class="loading"><span class="spin"></span>Calculando córners, remates y tarjetas…</div>';
     const name = n => Y.shortName(n);
-    const MAIN = ['1', 'X', '2', '1X', 'X2', '12', 'O1.5', 'O2.5', 'O3.5', 'U2.5', 'U3.5', 'BTTS', 'NBTTS', 'H0.5', 'A0.5', 'H1.5', 'A1.5', '1&O1.5', '2&O1.5'];
-    const rows = [];
-    if (m.res) {
-      for (const mk of m.res.markets) {
-        if (!MAIN.includes(mk.id)) continue;
-        let prov = m.odds && m.odds[mk.id], src = 'ESPN';
-        const ci = { '1': 0, 'X': 1, '2': 2 }[mk.id];
-        if (!prov && m.cons && ci != null) { prov = 1 / m.cons.probs[ci] / 1.05; src = 'consenso'; }
-        if (!prov) { prov = mk.fair / 1.06; src = 'estimado'; }
-        rows.push({ id: mk.id, group: mk.group, label: mk.label, p: mk.p, prov, src });
-      }
-    }
+    const rows = mainRows(m);
     let note = '';
     if (!m.us && window.RadarProps) {
       try {
@@ -148,6 +159,7 @@
         : (m.us ? 'ESPN aún no publica momios' : 'equipo sin partidos en la tabla');
       const clickable = !m.us && !m.noData;
       const idx = SHOWN.push(m) - 1;
+      registerMatch(m);
       html += `<div class="dmw"><button class="dm" ${clickable ? `data-lg="${m.lg}" data-h="${m.ev.homeId}" data-a="${m.ev.awayId}"` : 'disabled'}>
         <span><b>${matchTitle(m)}</b> <span class="m">${hour(m.ev.date)}</span><br><span class="m">${sub}</span>${motLine(m)}</span><span style="text-align:right">${right}</span></button>
         ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}</div>`;

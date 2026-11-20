@@ -159,4 +159,32 @@ t('contexto de tabla Liga MX última jornada', () => {
   assert.strictEqual(early.get('t1').tag, 'normal');
   assert.strictEqual(C.factor(c.get('t12')), 1.08);
 });
+const O = require('../optimize.js');
+t('optimizar ticket: cambia, quita y respeta reglas', () => {
+  const pool = new Map([
+    ['A', { match: 'A1 vs A2', items: [
+      { key: 'A:1', label: 'A1 gana', p: 0.62, prov: 1.50, provSrc: 'ESPN' },      // valor 0.93
+      { key: 'A:1X', label: 'A1 o empate', p: 0.82, prov: 1.32, provSrc: 'ESPN' }, // valor 1.08
+      { key: 'A:X', label: 'Empate', p: 0.50, prov: 2.10, provSrc: 'ESPN' }] }], // volado
+    ['B', { match: 'B1 vs B2', items: [{ key: 'B:O1.5', label: 'O1.5', p: 0.80, prov: 1.15, provSrc: 'ESPN' }] }],
+    ['C', { match: 'C1 vs C2', items: [{ key: 'C:1', label: 'C1 gana', p: 0.70, prov: 1.60, provSrc: 'consenso' }] }],
+  ]);
+  const legs = [
+    { key: 'A:1', matchKey: 'A', match: 'A1 vs A2', label: 'A1 gana', p: 0.62, prov: 1.50, provSrc: 'ESPN', dft: null },
+    { key: 'B:O1.5', matchKey: 'B', match: 'B1 vs B2', label: 'O1.5', p: 0.80, prov: 1.15, provSrc: 'ESPN', dft: null },
+  ];
+  const r = O.optimize(legs, pool);
+  assert.deepStrictEqual(r.after.map(l => l.key), ['A:1X']);
+  assert.deepStrictEqual(r.changes.map(c => c.type), ['swap', 'remove']);
+  const r2 = O.optimize(legs, pool, { allowAdd: true });
+  assert(r2.after.some(l => l.key === 'C:1') && !r2.after.some(l => l.key === 'A:X'));
+  assert(O.summary(r2.after, 10).ev > O.summary(legs, 10).ev);
+  // estimados: solo cambia a una más segura que siga pagando >= 1.30
+  const est = [{ key: 'E:1', matchKey: 'E', match: 'E', label: 'E1', p: 0.64, prov: 1.47, provSrc: 'estimado' }];
+  const pe = new Map([['E', { match: 'E', items: [{ key: 'E:1X', label: 'E1X', p: 0.75, prov: 1.31, provSrc: 'estimado' }, { key: 'E:O0.5', label: 'O0.5', p: 0.93, prov: 1.05, provSrc: 'estimado' }] }]]);
+  assert.strictEqual(O.optimize(est, pe).after[0].key, 'E:1X');
+  // máximo 10
+  const many = Array.from({ length: 12 }, (_, i) => ({ key: 'M' + i, matchKey: 'M' + i, match: 'M', label: 'x', p: 0.7 + i / 100, prov: 1.5, provSrc: 'ESPN' }));
+  assert.strictEqual(O.optimize(many, new Map()).after.length, 10);
+});
 console.log(`\n${n} pruebas OK`);

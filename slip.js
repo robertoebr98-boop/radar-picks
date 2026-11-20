@@ -7,6 +7,17 @@
   const pct = p => (p * 100 >= 1 ? (p * 100).toFixed(1) : (p * 100).toFixed(2)) + '%';
   const KEY = 'radar.slip';
   let S = load();
+  // Mercados vistos en la página (análisis, pronóstico del día, panel de mercados): de aquí salen las alternativas del optimizador.
+  const POOL = new Map(); // matchKey -> {match, items: Map key -> leg}
+  let OPT = null;         // propuesta pendiente {after, changes}
+  let allowAdd = false;
+  function register(leg) {
+    if (!leg || !leg.matchKey || !(leg.p > 0)) return;
+    let g = POOL.get(leg.matchKey);
+    if (!g) POOL.set(leg.matchKey, g = { match: leg.match, items: new Map() });
+    g.items.set(leg.key, { key: leg.key, label: leg.label, p: leg.p, prov: leg.prov ? +(+leg.prov).toFixed(2) : null, provSrc: leg.provSrc });
+  }
+  function poolView() { const m = new Map(); for (const [k, g] of POOL) m.set(k, { match: g.match, items: [...g.items.values()] }); return m; }
 
   // El ticket vive solo mientras la página está abierta: al recargar arranca vacío.
   function load() { try { localStorage.removeItem(KEY); } catch (e) { /* nada */ } return { stake: 10, legs: [] }; }
@@ -14,11 +25,12 @@
 
   // leg: {key, matchKey, match, label, p, odd}
   function add(leg) {
+    OPT = null; register(leg);
     if (S.legs.some(l => l.key === leg.key)) { remove(leg.key); return false; }
     S.legs.push({ ...leg, prov: leg.prov ? +(+leg.prov).toFixed(2) : null, dft: null });
     save(); render(); return true;
   }
-  function remove(key) { S.legs = S.legs.filter(l => l.key !== key); save(); render(); }
+  function remove(key) { OPT = null; S.legs = S.legs.filter(l => l.key !== key); save(); render(); }
   function has(key) { return S.legs.some(l => l.key === key); }
 
   const used = l => l.dft || l.prov;
@@ -89,6 +101,7 @@
       </div>
       <p class="note">"Con Draftea" usa tu momio donde lo escribiste y el provisional en el resto (${c.withDft} de ${S.legs.length} con Draftea). ${R.ready ? (R.ev >= 0 ? `En promedio ganarías ${money(R.ev)} por ticket a la larga.` : `En promedio pierdes ${money(-R.ev)} por ticket a la larga: la casa paga menos de lo que vale.`) : ''} Pega 1 de cada ${c.p > 0 ? Math.round(1 / c.p).toLocaleString('es-MX') : '∞'} veces.</p>
       ${warn.length ? `<div class="warnbox">${warn.map(esc).join('<br>')}</div>` : ''}
+      ${optHtml()}
       <button class="btn ghost sm" id="slipclear">Vaciar ticket</button>`
       : '<p class="note">Toca <b>+</b> en cualquier mercado, en el ticket sugerido o en los picks con valor para armar tu ticket.</p>';
     $('slipstake').value = S.stake;
@@ -100,8 +113,43 @@
       if (l) { l.dft = isFinite(n) && n > 1 ? +n.toFixed(2) : null; save(); setTimeout(render); }
     }));
     $('slipbody').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => remove(b.dataset.rm)));
-    const clr = $('slipclear'); if (clr) clr.addEventListener('click', () => { S.legs = []; save(); render(); });
+    const clr = $('slipclear'); if (clr) clr.addEventListener('click', () => { S.legs = []; OPT = null; save(); render(); });
+    const ob = $('optgo'); if (ob) ob.addEventListener('click', () => { OPT = window.RadarOptimize.optimize(S.legs, poolView(), { allowAdd }); setTimeout(render); });
+    const oa = $('optadd'); if (oa) oa.addEventListener('change', () => { allowAdd = oa.checked; if (OPT) OPT = window.RadarOptimize.optimize(S.legs, poolView(), { allowAdd }); setTimeout(render); });
+    const ok = $('optok'); if (ok) ok.addEventListener('click', () => { S.legs = OPT.after.map(l => ({ ...l })); OPT = null; save(); setTimeout(render); });
+    const no = $('optno'); if (no) no.addEventListener('click', () => { OPT = null; setTimeout(render); });
     document.querySelectorAll('[data-slip]').forEach(b => { const on = has(b.dataset.slip); b.classList.toggle('on', on); b.textContent = on ? '✓' : '+'; b.setAttribute('aria-pressed', on); });
+  }
+
+  // Botón Optimizar ticket y su propuesta (antes vs después).
+  function optHtml() {
+    const O = window.RadarOptimize;
+    if (!O) return '';
+    const real = S.legs.filter(O.isReal).length;
+    const head = `<div class="opt">
+      <div class="opth"><button class="btn sm" id="optgo">Optimizar ticket</button>
+      <label class="m"><input type="checkbox" id="optadd" ${allowAdd ? 'checked' : ''}> Permitir agregar selecciones de otros partidos</label></div>
+      <p class="note">Busca en los mismos partidos un mercado con más valor (prob × momio), quita las que restan y respeta tus reglas: máx 10, momio ≥ 1.30, prob ≥ 60%, sin volados.</p>
+      ${real < S.legs.length ? `<div class="warnbox"><b>Ojo:</b> ${S.legs.length - real} de ${S.legs.length} selecciones usan momio <b>estimado</b>. Con momio estimado el valor esperado positivo <b>no es real</b> (sale del mismo modelo). Escribe el momio de Draftea o usa mercados con momio ESPN/consenso para que el optimizador compare valor de verdad; si no, solo te cambia a opciones más seguras.</div>` : ''}`;
+    if (!OPT) return head + '</div>';
+    if (!OPT.changes.length) return head + '<p class="note good">No encontré cambios que suban el valor con lo que hay cargado. Abre "Mercados ▾" de tus partidos o analiza el partido para darle más opciones.</p></div>';
+    const stake = Math.max(0, +S.stake || 0);
+    const a = O.summary(S.legs, stake), b = O.summary(OPT.after, stake);
+    const sign = x => (x >= 0 ? '+' : '') + money(x);
+    const ch = OPT.changes.map(c => c.type === 'swap'
+      ? `<li><b>Cambiar</b> ${esc(c.from.label)} → <b>${esc(c.to.label)}</b> <span class="m">(${esc(c.from.match)} · ${esc(c.why)})</span></li>`
+      : c.type === 'remove' ? `<li><b>Quitar</b> ${esc(c.from.label)} <span class="m">(${esc(c.from.match)} · ${esc(c.why)})</span></li>`
+      : `<li><b>Agregar</b> ${esc(c.to.label)} <span class="m">(${esc(c.to.match)} · ${esc(c.why)})</span></li>`).join('');
+    return head + `<ul class="optl">${ch}</ul>
+      <div class="sgrid">
+        <span></span><span class="hd">Antes</span><span class="hd">Después</span>
+        <span>Selecciones</span><b class="num">${a.n}</b><b class="num">${b.n}</b>
+        <span>Prob. de acertar todo</span><b class="num">${pct(a.p)}</b><b class="num">${pct(b.p)}</b>
+        <span>Momio total</span><b class="num">${a.odd.toFixed(2)}</b><b class="num">${b.odd.toFixed(2)}</b>
+        <span>Valor esperado</span><b class="num ${a.ev >= 0 ? 'good' : 'bad'}">${sign(a.ev)}</b><b class="num ${b.ev >= 0 ? 'good' : 'bad'}">${sign(b.ev)}</b>
+        <span>Con momio real</span><b class="num">${a.real} de ${a.n}</b><b class="num">${b.real} de ${b.n}</b>
+      </div>
+      <div class="opth"><button class="btn sm" id="optok">Aplicar cambios</button><button class="btn ghost sm" id="optno">Descartar</button></div></div>`;
   }
 
   function init() {
@@ -118,7 +166,7 @@
   }
 
   function snapshot() { return JSON.parse(JSON.stringify({ stake: S.stake, legs: S.legs })); }
-  function loadTicket(t) { S = { stake: +t.stake || 10, legs: JSON.parse(JSON.stringify(t.legs || [])) }; render(); }
-  window.RadarSlip = { add, remove, has, refresh: render, calc: () => calc(), snapshot, load: loadTicket };
+  function loadTicket(t) { OPT = null; S = { stake: +t.stake || 10, legs: JSON.parse(JSON.stringify(t.legs || [])) }; render(); }
+  window.RadarSlip = { register, add, remove, has, refresh: render, calc: () => calc(), snapshot, load: loadTicket };
   init();
 })();
