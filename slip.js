@@ -11,7 +11,8 @@
   const POOL = new Map(); // matchKey -> {match, items: Map key -> leg}
   let OPT = null;         // propuesta pendiente {after, changes}
   let optMode = 'keep';
-  const openMatches = () => (window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set());
+  let optOpen = false; // incluir partidos de tickets abiertos
+  const openMatches = () => optOpen ? new Set() : (window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set());
   const runOpt = () => window.RadarOptimize.optimize(S.legs, poolView(), { mode: optMode, exclude: openMatches() });
   function register(leg) {
     if (!leg || !leg.matchKey || !(leg.p > 0)) return;
@@ -175,6 +176,7 @@
     $('slipbody').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => remove(b.dataset.rm)));
     const clr = $('slipclear'); if (clr) clr.addEventListener('click', () => { S.legs = []; OPT = null; save(); render(); });
     const ob = $('optgo'); if (ob) ob.addEventListener('click', () => { OPT = runOpt(); setTimeout(render); });
+    const oo = $('optopen'); if (oo) oo.addEventListener('change', () => { optOpen = oo.checked; if (OPT) OPT = runOpt(); setTimeout(render); });
     const oa = $('optmode'); if (oa) oa.addEventListener('change', () => { optMode = oa.value; if (OPT) OPT = runOpt(); setTimeout(render); });
     const ok = $('optok'); if (ok) ok.addEventListener('click', () => { S.legs = OPT.after.map(l => ({ ...l })); OPT = null; save(); setTimeout(render); });
     const no = $('optno'); if (no) no.addEventListener('click', () => { OPT = null; setTimeout(render); });
@@ -219,11 +221,17 @@
     const real = S.legs.filter(O.isReal).length;
     const head = `<div class="opt">
       <div class="opth"><button class="btn sm" id="optgo">Optimizar ticket</button>
-      <select class="in sm" id="optmode" aria-label="Modo del optimizador">${[['keep', 'Mismo número de selecciones'], ['grow', 'Puede alargar el ticket'], ['cut', 'Puede acortar (solo quitar)']].map(([v, l]) => `<option value="${v}" ${optMode === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-      <p class="note">Cambia por mercados con más valor (prob × momio) respetando tus reglas: momio ≥ 1.30, prob ≥ 60%, sin volados. No suma partidos que ya están en tus tickets abiertos.</p>
+      <select class="in sm" id="optmode" aria-label="Modo del optimizador">${[['keep', 'Mismo número de selecciones'], ['grow', 'Puede alargar el ticket'], ['cut', 'Puede acortar (solo quitar)']].map(([v, l]) => `<option value="${v}" ${optMode === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      <label class="m"><input type="checkbox" id="optopen" ${optOpen ? 'checked' : ''}> Incluir partidos de mis tickets abiertos</label></div>
+      <p class="note">Cambia por mercados con más valor (prob × momio) respetando tus reglas: momio ≥ 1.30, prob ≥ 60%, sin volados. Para sumar de otros partidos necesita momio real (ESPN, consenso o Draftea) con valor ≥ 1.05.</p>
       ${real < S.legs.length ? `<div class="warnbox"><b>Ojo:</b> ${S.legs.length - real} de ${S.legs.length} selecciones usan momio <b>estimado</b>. Con momio estimado el valor esperado positivo <b>no es real</b> (sale del mismo modelo). Escribe el momio de Draftea o usa mercados con momio ESPN/consenso para que el optimizador compare valor de verdad; si no, solo te cambia a opciones más seguras.</div>` : ''}`;
     if (!OPT) return head + '</div>';
+    if (!OPT.changes.length && OPT.info && !OPT.info.cands && OPT.info.excluded && optMode !== 'cut') return head + `<p class="note">No encontré qué sumar: descarté ${OPT.info.excluded} partido(s) porque ya están en tus tickets abiertos. Marca "Incluir partidos de mis tickets abiertos" si quieres usarlos.</p></div>`;
     if (!OPT.changes.length) return head + '<p class="note good">No encontré cambios que suban el valor con lo que hay cargado. Abre "Mercados ▾" de tus partidos o analiza el partido para darle más opciones.</p></div>';
+    const I = OPT.info || {};
+    const why = optMode === 'cut' ? '' : !I.cands
+      ? `<p class="note">No encontré selecciones de otros partidos con momio real y valor ≥ 1.05${I.excluded ? ` (descarté ${I.excluded} partido(s) que ya están en tus tickets abiertos; marca "Incluir partidos de mis tickets abiertos" para usarlos)` : ''}. Abre "Mercados ▾" de más partidos en el Pronóstico del día para darle opciones.</p>`
+      : I.excluded ? `<p class="note">Descarté ${I.excluded} partido(s) que ya están en tus tickets abiertos.</p>` : '';
     const stake = Math.max(0, +S.stake || 0);
     const a = O.summary(S.legs, stake), b = O.summary(OPT.after, stake);
     const sign = x => (x >= 0 ? '+' : '') + money(x);
@@ -232,7 +240,7 @@
       : c.type === 'note' ? `<li><b>Se queda</b> ${esc(c.from.label)} <span class="m">(${esc(c.from.match)} · ${esc(c.why)})</span></li>`
       : c.type === 'remove' ? `<li><b>Quitar</b> ${esc(c.from.label)} <span class="m">(${esc(c.from.match)} · ${esc(c.why)})</span></li>`
       : `<li><b>Agregar</b> ${esc(c.to.label)} <span class="m">(${esc(c.to.match)} · ${esc(c.why)})</span></li>`).join('');
-    return head + `<ul class="optl">${ch}</ul>
+    return head + `<ul class="optl">${ch}</ul>${why}
       <div class="sgrid">
         <span></span><span class="hd">Antes</span><span class="hd">Después</span>
         <span>Selecciones</span><b class="num">${a.n}</b><b class="num">${b.n}</b>

@@ -262,6 +262,11 @@ t('optimizar ticket: cambia, quita y respeta reglas', () => {
   assert(rk2.after.length === legs.length && rk2.after.some(l => l.key === 'C:1'));
   const rx = O.optimize(legs, pool2, { mode: 'keep', exclude: new Set(['C']) });
   assert(rx.after.length === legs.length && !rx.after.some(l => l.key === 'C:1') && rx.changes.some(c => c.type === 'note'));
+  // alargar: reemplaza/quita y luego suma; nunca queda más corto si hay candidatos
+  const rg = O.optimize(legs, pool, { mode: 'grow' });
+  assert(rg.after.length >= legs.length && rg.after.some(l => l.key === 'C:1'), JSON.stringify(rg.after.map(l => l.key)));
+  const rge = O.optimize(legs, pool, { mode: 'grow', exclude: new Set(['C']) });
+  assert(rge.info.excluded === 1 && rge.info.cands === 0);
   // estimados: solo cambia a una más segura que siga pagando >= 1.30
   const est = [{ key: 'E:1', matchKey: 'E', match: 'E', label: 'E1', p: 0.64, prov: 1.47, provSrc: 'estimado' }];
   const pe = new Map([['E', { match: 'E', items: [{ key: 'E:1X', label: 'E1X', p: 0.75, prov: 1.31, provSrc: 'estimado' }, { key: 'E:O0.5', label: 'O0.5', p: 0.93, prov: 1.05, provSrc: 'estimado' }] }]]);
