@@ -26,7 +26,9 @@
     BREAK_N: 6,          // quiebre de forma: últimos 6 partidos
     BREAK_T: 1.5,        // diferencia (goles netos vs lo esperado por partido) para avisar de un cambio de forma
     BREAK_BOOST: 1,      // peso extra a lo reciente si hay quiebre: 1 = solo aviso (backtest: x2 y x3 no mejoran)
-    MOOD: 0.08,          // ajuste manual en racha / en crisis: ±8% de ataque (opinión, sin validar)          // con menos de 3 enfrentamientos no se usa
+    MOOD: 0.08,
+    BTTS_BASE: 0.54,     // ambos anotan: promedio real (11,467 partidos: 54.7%)
+    BTTS_SHRINK: 0.6,    // Poisson exagera los extremos de ambos anotan; se acerca 40% al promedio (backtest: Brier 0.2465 → 0.2456)          // ajuste manual en racha / en crisis: ±8% de ataque (opinión, sin validar)          // con menos de 3 enfrentamientos no se usa
     ADJ_SOT: 0.8,        // dentro del ajuste: 80% remates a puerta, 20% goles (si hay remates)
   };
 
@@ -211,6 +213,8 @@
 
   // Resumen de los últimos 5 enfrentamientos: goles de cada equipo (sin importar sede), quién ganó
   // y, si hay estadísticas, córners, remates y tarjetas promedio por partido.
+  function bttsAdjust(p) { return CFG.BTTS_BASE + CFG.BTTS_SHRINK * (p - CFG.BTTS_BASE); }
+
   function h2hSummary(games, homeId, statsById) {
     const g = (games || []).filter(e => e.hs != null && e.as != null).slice(0, 5);
     if (!g.length) return null;
@@ -309,8 +313,13 @@
     const defs = marketDefs(names.home, names.away);
     const markets = defs.map(d => {
       const p = sumWhere(m, d.fn);
-      const worst = Math.min(...worstMs.map(wm => sumWhere(wm, d.fn)));
-      return { id: d.id, group: d.group, label: d.label, p, worst, fair: 1 / p };
+      let worst = Math.min(...worstMs.map(wm => sumWhere(wm, d.fn)));
+      let q = p;
+      if (d.id === 'BTTS' || d.id === 'NBTTS') {
+        const adj = x => d.id === 'BTTS' ? bttsAdjust(x) : 1 - bttsAdjust(1 - x);
+        q = adj(p); worst = Math.min(q, adj(worst));
+      }
+      return { id: d.id, group: d.group, label: d.label, p: q, worst, fair: 1 / q };
     });
     // Marcadores más probables
     const scores = [];
@@ -339,7 +348,7 @@
     return { tag: 'sin-valor', ev, minNeeded };
   }
 
-  const api = { CFG, adjustedStrength, combineAdj, poissonPmf, scoreMatrix, sumWhere, marketDefs, leagueAverage, strength, formFactor, expectedGoals, h2hSummary, americanToDecimal, noVig, fitLambdas, analyze, verdict };
+  const api = { CFG, adjustedStrength, combineAdj, poissonPmf, scoreMatrix, sumWhere, marketDefs, leagueAverage, strength, formFactor, expectedGoals, h2hSummary, bttsAdjust, americanToDecimal, noVig, fitLambdas, analyze, verdict };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarModel = api;
 })(typeof window !== 'undefined' ? window : globalThis);

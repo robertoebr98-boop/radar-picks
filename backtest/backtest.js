@@ -18,7 +18,7 @@ let CAL = null;
 const LGID = { 'premier-league': 'eng.1', 'la-liga': 'esp.1', 'serie-a': 'ita.1', 'bundesliga': 'ger.1', 'ligue-1': 'fra.1' };
 function evaluate(seasons, opt) {
   let brier = 0, ll = 0, n = 0, bo = 0, bb = 0;
-  CAL = { '0.60-0.70': [0, 0, 0], '0.70-0.80': [0, 0, 0], '0.80-0.90': [0, 0, 0], '0.90+': [0, 0, 0] };
+  CAL = { '0.40-0.50': [0, 0, 0], '0.50-0.60': [0, 0, 0], '0.60-0.70': [0, 0, 0], '0.70-0.80': [0, 0, 0], '0.80-0.90': [0, 0, 0], '0.90+': [0, 0, 0] };
   for (const s of seasons) {
     const prev = opt.usePrev ? s.prev : null;
     const hist = [];
@@ -34,7 +34,8 @@ function evaluate(seasons, opt) {
         const o25 = pred.legs.find(l => l.id === 'O2.5'), bt = pred.legs.find(l => l.id === 'BTTS');
         bo += (o25.p - (o25.hit ? 1 : 0)) ** 2; bb += (bt.p - (bt.hit ? 1 : 0)) ** 2;
         for (const l of pred.legs) {
-          const b = l.p >= 0.9 ? '0.90+' : l.p >= 0.8 ? '0.80-0.90' : l.p >= 0.7 ? '0.70-0.80' : l.p >= 0.6 ? '0.60-0.70' : null;
+          if (process.env.LEG && l.id !== process.env.LEG) continue;
+          const b = l.p >= 0.9 ? '0.90+' : l.p >= 0.8 ? '0.80-0.90' : l.p >= 0.7 ? '0.70-0.80' : l.p >= 0.6 ? '0.60-0.70' : l.p >= 0.5 ? '0.50-0.60' : l.p >= 0.4 ? '0.40-0.50' : null;
           if (b) { CAL[b][0]++; CAL[b][1] += l.p; CAL[b][2] += l.hit ? 1 : 0; }
         }
       }
@@ -107,9 +108,10 @@ function predict(hist, m, opt, prev) {
     }
   }
   const mat = M.scoreMatrix(lh, la);
-  Object.assign(M.CFG, saved);
   const p1 = M.sumWhere(mat, (h, a) => h > a), px = M.sumWhere(mat, (h, a) => h === a);
   const legs = LEGS.map(([id, fn]) => ({ id, p: M.sumWhere(mat, fn), hit: fn(m.hg, m.ag) }));
+  if (M.bttsAdjust) for (const l of legs) if (l.id === 'BTTS' || l.id === 'NBTTS') { const pb = M.bttsAdjust(l.id === 'BTTS' ? l.p : 1 - l.p); l.p = l.id === 'BTTS' ? pb : 1 - pb; }
+  Object.assign(M.CFG, saved);
   return { p1, px, p2: 1 - p1 - px, legs };
 }
 

@@ -93,3 +93,8 @@ Pregunta (aficionado de Pumas): ¿pesan más los goles de las últimas jornadas?
 
 Conclusión: dar más peso a lo reciente empeora; los quiebres moderados son ruido y solo los extremos (206 de 7,994) mejoran algo, con muestra chica. No se cambia el cálculo: se avisa en el análisis cuando hay quiebre (≥1.5) y hay un ajuste manual "en racha / en crisis" (±8% ataque) marcado como opinión.
 Además: Liga MX Apertura 2026 no tiene play-in (año de Mundial): los 8 primeros van a cuartos; context.js actualizado.
+
+## Ambos anotan (BTTS), 21-nov-2026
+Calibración del modelo (7,994 partidos): el Poisson exagera los extremos. Decía 46% → pasó 51%; decía 72% → pasó 65.5%. Promedio real de ambos anotan: 54.7% (11,467 partidos).
+Ajuste: p' = 0.54 + 0.6·(p − 0.54). Brier de ambos anotan 0.2465 → 0.2456 (k 0.8: 0.2459, k 0.5: 0.2459, k 0.4: 0.2462). Después del ajuste: dijo 47.5% → pasó 49.4%; 54.6% → 55.0%; 61.9% → 66.0%.
+Lectura práctica: ambos anotan rara vez pasa de 65% en el modelo; es un mercado de momio ~1.70–1.90 que solo conviene cuando la casa paga más que el justo.
