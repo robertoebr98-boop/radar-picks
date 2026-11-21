@@ -287,13 +287,13 @@
     return { books: p1x2.length, probs: probs.map(x => x / sum), over25: pOU.length ? med(pOU) : null };
   }
 
-  function yyyymmdd(dt) { return dt.toISOString().slice(0, 10).replace(/-/g, ''); }
 
   async function upcoming(lg, days = 7) {
     // ESPN rechaza rangos de fechas en fútbol: se pide día por día y se juntan.
+    // Días en hora de Nueva York (como los arma ESPN): en UTC, de noche en México ya era "mañana" y se perdían los partidos de hoy.
     const now = Date.now(), seen = new Set(), out = [];
     const days_ = await Promise.all(Array.from({ length: days + 1 }, (_, i) =>
-      get(site(lg, 'scoreboard'), { dates: yyyymmdd(new Date(now + i * 864e5)) }).catch(() => ({ events: [] }))));
+      get(site(lg, 'scoreboard'), { dates: espnDay(new Date(now + i * 864e5).toISOString()) }).catch(() => ({ events: [] }))));
     for (const d of days_) for (const ev of d.events || []) {
       if (seen.has(ev.id)) continue; seen.add(ev.id);
       const e = parseEvent(ev); if (!e.completed && e.state !== 'in' && new Date(e.date).getTime() > Date.now()) out.push(e);
