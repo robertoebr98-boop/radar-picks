@@ -32,10 +32,14 @@
   }
 
   // tickets → { rows: [{type, bucket, n, said, hit}], total, pending } (solo regulares; los soñadores aparte).
+  // Safe: el modelo le da 70%+ al ticket completo (momio justo ≤ 1.43). Tope de monto 10% en vez de 5%.
+  const SAFE_P = 0.70, SAFE_CAP = 0.10;
+  const isSafe = p => p >= SAFE_P;
   function calibration(tickets, kind = 'regular') {
+    const kinds = Array.isArray(kind) ? kind : [kind];
     const B = new Map(); let total = { n: 0, said: 0, hit: 0 }, unknown = 0;
     for (const t of tickets) {
-      if ((t.kind || 'regular') !== kind || t.status === 'pendiente') continue;
+      if (!kinds.includes(t.kind || 'regular') || t.status === 'pendiente') continue;
       for (const l of t.legs || []) {
         if (!(l.p > 0)) continue;
         const h = legHit(t, l);
@@ -62,12 +66,12 @@
     }
     const edge = p * odd - 1;
     if (edge <= 0) return { amount: 0, why: 'valor esperado negativo' };
-    const kelly = edge / (odd - 1);
-    let f = Math.min(kelly / 4, 0.05);
-    const capped = kelly / 4 > 0.05;
+    const kelly = edge / (odd - 1), safe = isSafe(p), cap = safe ? SAFE_CAP : 0.05;
+    let f = Math.min(kelly / 4, cap);
+    const capped = kelly / 4 > cap;
     if (overlap) f /= 2;
     const a = Math.round(bank * f);
-    return { amount: a, why: `¼ Kelly${capped ? ' (tope 5%)' : ''}${overlap ? ', mitad: partido repetido en otro ticket' : ''}`, f };
+    return { amount: a, why: `¼ Kelly${capped ? ` (tope ${Math.round(cap * 100)}%${safe ? ', safe' : ''})` : ''}${overlap ? ', mitad: partido repetido en otro ticket' : ''}`, f };
   }
 
   // Lectura del partido: registro de aciertos (lo guarda el Pronóstico del día al ver partidos jugados).
@@ -79,7 +83,7 @@
     try { const v = Object.values(JSON.parse(localStorage.getItem(RK)) || {}); return { n: v.length, hits: v.filter(Boolean).length }; } catch (e) { return { n: 0, hits: 0 }; }
   }
 
-  const api = { typeOf, legHit, calibration, suggestStake, logReading, readingStats, bucketOf };
+  const api = { typeOf, legHit, calibration, suggestStake, logReading, readingStats, bucketOf, SAFE_P, SAFE_CAP, isSafe };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarMoney = api;
 })(typeof window !== 'undefined' ? window : globalThis);

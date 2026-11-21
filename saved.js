@@ -29,7 +29,7 @@
     const c = window.RadarSlip.calc();
     list.unshift({
       id: String(Date.now()), name, createdAt: Date.now(), updatedAt: Date.now(), stake: snap.stake, legs: snap.legs,
-      odd: c.real.odd, payout: c.real.payout, p: c.p, withDft: c.withDft, status: 'pendiente', kind: $('savekind').value || (c.real.odd >= 100 ? 'sonador' : 'regular'),
+      odd: c.real.odd, payout: c.real.payout, p: c.p, withDft: c.withDft, status: 'pendiente', kind: (() => { const k = $('savekind').value || (c.real.odd >= 100 ? 'sonador' : 'regular'); return k === 'regular' && window.RadarMoney && window.RadarMoney.isSafe(c.p) ? 'safe' : k; })(),
     });
     if (persist()) {
       $('savename').value = ''; $('savekind').value = 'regular';
@@ -73,7 +73,8 @@
     // Regulares y soñadores llevan su propia estadística (un soñador casi siempre pierde: no debe ensuciar el récord).
     const line = (lab, x) => `<div class="svsum"><b>${lab}</b><span>${x.hits}/${x.n} ganados</span><span class="num ${x.balance >= 0 ? 'good' : 'bad'}">${(x.balance >= 0 ? '+' : '') + money(x.balance)}</span><span class="m">${x.pend} pend. · ${money(x.pendStake)}</span></div>`;
     if (list.length) {
-      const r = summary('regular'), d = summary('sonador');
+      const r = summary('regular'), d = summary('sonador'), sf = summary('safe');
+      if (sf.n + sf.pend) html += line('Safe', sf);
       html += line('Regulares', r);
       if (d.n + d.pend) html += line('Soñadores', d);
     }
@@ -84,7 +85,7 @@
       return `<div class="sv${open ? ' open' : ''}">
         <button class="svh" data-toggle="${t.id}" aria-expanded="${open}">
           <span><b>${esc(t.name)}</b><br><span class="m num">${(+t.odd || 0).toFixed(2)}x · ${money(+t.stake)} → ${money(+t.payout)}</span></span>
-          <span>${t.kind === 'sonador' ? '<span class="st lean">soñador</span> ' : ''}<span class="st ${cls}">${esc(t.status)}${t.auto ? ' (auto)' : ''}</span></span>
+          <span>${t.kind === 'sonador' ? '<span class="st lean">soñador</span> ' : t.kind === 'safe' ? '<span class="st ok">safe</span> ' : ''}<span class="st ${cls}">${esc(t.status)}${t.auto ? ' (auto)' : ''}</span></span>
         </button>
         ${liveHtml(t)}${open ? `<p class="m svmeta">${fmt(t.createdAt)} · ${t.legs.length} selecciones${t.p ? ` · prob ${Math.round(t.p * 100)}%` : ''}</p>` : ''}${legs}
         ${open ? `<div class="svact">
@@ -92,6 +93,7 @@
           <button class="btn ghost sm" data-st="${t.id}:ganado">Ganado</button>
           <button class="btn ghost sm" data-st="${t.id}:perdido">Perdido</button>
           ${t.status !== 'pendiente' ? `<button class="btn ghost sm" data-st="${t.id}:pendiente">Pendiente</button>` : ''}
+          <button class="btn ghost sm" data-kind="${t.id}:${t.kind === 'safe' ? 'regular' : 'safe'}">${t.kind === 'safe' ? 'Quitar safe' : 'Marcar safe'}</button>
           <button class="btn ghost sm ${armed === t.id ? 'danger' : ''}" data-del="${t.id}">${armed === t.id ? '¿Seguro? Toca otra vez' : 'Borrar'}</button>
         </div>` : ''}
       </div>`;
@@ -106,6 +108,7 @@
     }));
     $('savedlist').querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', () => { openId = openId === b.dataset.toggle ? null : b.dataset.toggle; render(); }));
     $('savedlist').querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => openInCalc(b.dataset.open)));
+    $('savedlist').querySelectorAll('[data-kind]').forEach(b => b.addEventListener('click', () => { const [id, k] = b.dataset.kind.split(':'); const t = list.find(x => x.id === id); if (t) { t.kind = k; t.updatedAt = Date.now(); persist(); render(); } }));
     $('savedlist').querySelectorAll('[data-st]').forEach(b => b.addEventListener('click', () => { const [id, st] = b.dataset.st.split(':'); setStatus(id, st); }));
     $('savedlist').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => del(b.dataset.del)));
   }
@@ -138,7 +141,7 @@
   // ---- Calibración: lo que dijo el modelo vs lo que pegó (solo regulares) ----
   function calibHtml() {
     const MO = window.RadarMoney; if (!MO) return '';
-    const c = MO.calibration(list, 'regular'), rd = MO.readingStats();
+    const c = MO.calibration(list, ['regular', 'safe']), rd = MO.readingStats();
     if (!c.total && !rd.n) return '';
     const pc = x => Math.round(x * 100) + '%';
     const cls = r => r.n < 5 ? 'eq' : r.hit >= r.said - 0.05 ? 'up' : 'down';

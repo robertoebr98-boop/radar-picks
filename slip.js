@@ -234,7 +234,10 @@
     const overlap = S.legs.some(l => open.has(l.matchKey));
     const b = bank();
     const sg = b && R.ready ? MO.suggestStake({ bank: b, p: c.p, odd: R.odd, kind, overlap }) : null;
-    return `<div class="sug"><label class="m">Saldo $<input class="in sm" id="bank" inputmode="decimal" value="${b || ''}" placeholder="tu saldo" style="width:90px"></label>
+    const safe = R.ready && MO.isSafe && MO.isSafe(c.p);
+    const sfx = safe ? `<span class="st ok" title="El modelo le da ${Math.round(c.p * 100)}% al ticket completo">Safe · ${Math.round(c.p * 100)}%</span>`
+      : kind === 'safe' && R.ready ? `<span class="m">No es safe: el modelo le da ${Math.round(c.p * 100)}% (pide 70%+).</span>` : '';
+    return `${sfx ? `<div class="sug">${sfx}</div>` : ''}<div class="sug"><label class="m">Saldo $<input class="in sm" id="bank" inputmode="decimal" value="${b || ''}" placeholder="tu saldo" style="width:90px"></label>
       ${sg ? `<span>Sugerido: <b class="num">$${sg.amount}</b> <span class="m">${esc(sg.why)}</span></span>${sg.amount > 0 && sg.amount !== +S.stake ? '<button class="btn ghost sm" id="usesug">Usar</button>' : ''}` : `<span class="m">${b ? 'faltan momios' : 'escribe tu saldo para ver el monto sugerido'}</span>`}</div>`;
   }
 

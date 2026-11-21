@@ -260,7 +260,7 @@ t('calibración por tipo y rango, y monto sugerido con topes', () => {
   assert.strictEqual(MO.suggestStake({ bank: 1000, p: 0.5, odd: 1.8 }).amount, 0); // valor esperado negativo
   const s1 = MO.suggestStake({ bank: 1000, p: 0.6, odd: 2.0 }); // kelly 0.2 → ¼ = 5% → $50
   assert.strictEqual(s1.amount, 50);
-  assert.strictEqual(MO.suggestStake({ bank: 1000, p: 0.7, odd: 2.0 }).amount, 50); // tope 5%
+  assert.strictEqual(MO.suggestStake({ bank: 1000, p: 0.68, odd: 2.0 }).amount, 50); // tope 5% (no safe)
   assert.strictEqual(MO.suggestStake({ bank: 1000, p: 0.6, odd: 2.0, overlap: true }).amount, 25);
   assert.strictEqual(MO.suggestStake({ bank: 915.26, p: 0.001, odd: 6000, kind: 'sonador' }).amount, 5);
 });
@@ -276,6 +276,15 @@ t('en vivo: minuto, lo que falta del partido y selecciones seguras', () => {
   const red = IP.project({ lh: 1.6, la: 1.0, hs: 0, as: 0, minute: 30, redH: 1 });
   const nored = IP.project({ lh: 1.6, la: 1.0, hs: 0, as: 0, minute: 30 });
   assert(red.rh < nored.rh && red.ra > nored.ra);
+});
+t('safe: 70%+ del modelo, tope 10% y récord propio', () => {
+  const MO = require('../money.js');
+  assert(MO.isSafe(0.72) && !MO.isSafe(0.6));
+  const a = MO.suggestStake({ bank: 1000, p: 0.9, odd: 1.4 }), b = MO.suggestStake({ bank: 1000, p: 0.5, odd: 2.6 });
+  assert(a.amount <= 100 && a.amount > 50 && b.amount <= 50);
+  const tk = [{ kind: 'safe', status: 'ganado', legs: [{ p: 0.9, key: 'x:1', matchKey: 'x' }] }, { kind: 'regular', status: 'perdido', legs: [{ p: 0.6, key: 'y:1', matchKey: 'y', hit: false }] }];
+  assert.strictEqual(MO.calibration(tk, ['regular', 'safe']).total.n, 2);
+  assert.strictEqual(MO.calibration(tk).total.n, 1);
 });
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
