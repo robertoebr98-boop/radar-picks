@@ -67,10 +67,12 @@
   // Momio siempre estimado (no hay fuente gratis) y un poco menos de confianza: "peor caso" 4 puntos abajo.
   const PROP_LGS = ['eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1'];
   const PROP_GROUPS = ['Córners', 'Tarjetas'];
+  // Líneas que Draftea no ofrece (reportado por Roberto, 21-nov): no se sugieren.
+  const NOT_IN_DRAFTEA = new Set(['K<5.5', 'K>5.5']);
   function propLegs(ev, avgs, lg) {
     const P = root.RadarProps;
     if (!P || !avgs) return [];
-    return P.markets(ev, avgs, lg, shortName(ev.homeName), shortName(ev.awayName)).filter(x => PROP_GROUPS.includes(x.group)).map(x => {
+    return P.markets(ev, avgs, lg, shortName(ev.homeName), shortName(ev.awayName)).filter(x => PROP_GROUPS.includes(x.group) && !NOT_IN_DRAFTEA.has(x.id)).map(x => {
       const est = x.fair / P.PROP_MARGIN, vol = x.p >= 0.45 && x.p <= 0.55;
       return { id: x.id, label: x.label, group: x.group, p: x.p, worst: x.p - 0.04, odd: null, est, ev: null, prop: true,
         tag: vol ? 'volado' : est < TICKET.MIN_ODD ? 'momio-bajo' : 'estimado', minNeeded: Math.max(TICKET.MIN_ODD, 1 / x.p) };
@@ -393,7 +395,7 @@
   // Boost de Draftea: sube la ganancia (no la entrada) en ese %.
   const boosted = (odd, b) => 1 + (odd - 1) * (1 + (b || 0) / 100);
 
-  const api = { pickN, boosted, PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
+  const api = { NOT_IN_DRAFTEA, pickN, boosted, PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarDay = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -298,6 +298,10 @@ t('ticket de N selecciones para boosts: exacto, más probable y con boost', () =
   assert(few && few.matches <= 3 && few.legs.length <= 6);
   assert.strictEqual(+Y.boosted(3, 80).toFixed(2), 4.6);
 });
+t('sin líneas que Draftea no ofrece (tarjetas 5.5)', () => {
+  const Y = require('../day.js');
+  assert(Y.NOT_IN_DRAFTEA.has('K<5.5'));
+});
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
   OP._useMemory({});
