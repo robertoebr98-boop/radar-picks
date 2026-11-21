@@ -75,7 +75,7 @@
   }
 
   function summary(legs, stake) {
-    const p = legs.reduce((a, l) => a * l.p, 1);
+    const p = (root.RadarSlip && root.RadarSlip.jointP) ? root.RadarSlip.jointP(legs) : legs.reduce((a, l) => a * l.p, 1);
     const odd = legs.reduce((a, l) => a * (oddOf(l) || 1), 1);
     const real = legs.filter(isReal).length;
     return { p, odd, ev: stake * (p * odd - 1), n: legs.length, real };

@@ -15,7 +15,7 @@
     if (!leg || !leg.matchKey || !(leg.p > 0)) return;
     let g = POOL.get(leg.matchKey);
     if (!g) POOL.set(leg.matchKey, g = { match: leg.match, items: new Map() });
-    g.items.set(leg.key, { key: leg.key, t: leg.t || null, label: leg.label, p: leg.p, prov: leg.prov ? +(+leg.prov).toFixed(2) : null, provSrc: leg.provSrc });
+    g.items.set(leg.key, { key: leg.key, lam: leg.lam || null, t: leg.t || null, label: leg.label, p: leg.p, prov: leg.prov ? +(+leg.prov).toFixed(2) : null, provSrc: leg.provSrc });
   }
   function poolView() { const m = new Map(); for (const [k, g] of POOL) m.set(k, { match: g.match, items: [...g.items.values()] }); return m; }
 
@@ -38,10 +38,48 @@
   const hourMX = iso => { try { return iso ? new Date(iso).toLocaleTimeString('es-MX', { timeZone: 'America/Mexico_City', hour: '2-digit', minute: '2-digit', hour12: false }) : ''; } catch (e) { return ''; } };
   const byTime = (a, b) => (a.t ? new Date(a.t).getTime() : Infinity) - (b.t ? new Date(b.t).getTime() : Infinity);
 
+  // ---- Selecciones correlacionadas (mismo partido) ----
+  // Con los goles esperados del partido se arma la matriz de marcadores y se mide la prob. de que pasen TODAS
+  // a la vez. Ej.: si hay más de 2.5 goles, ambos anotan pasa ~80% de las veces, no 55%.
+  const MM = () => window.RadarModel;
+  const DEFS = () => { const d = {}; for (const x of MM().marketDefs('L', 'V')) d[x.id] = x.fn; return d; };
+  const idOf = l => l.key.slice(l.matchKey.length + 1);
+  function groupInfo(legs) {
+    const M = MM(); if (!M) return null;
+    const lam = (legs.find(l => l.lam) || {}).lam;
+    const defs = DEFS();
+    const known = legs.filter(l => defs[idOf(l)]), other = legs.filter(l => !defs[idOf(l)]);
+    if (!lam || known.length < 1) return null;
+    const mat = M.scoreMatrix(lam[0], lam[1]);
+    const P = fns => M.sumWhere(mat, (h, a) => fns.every(f => f(h, a)));
+    // Orden en que las agregaste: cada una agrega un factor condicional sobre las anteriores.
+    const ord = known;
+    const steps = [];
+    let p = ord[0].p, fns = [defs[idOf(ord[0])]];
+    steps.push({ leg: ord[0], factor: ord[0].p });
+    for (const l of ord.slice(1)) {
+      const before = P(fns); fns = [...fns, defs[idOf(l)]];
+      const f = before > 0 ? P(fns) / before : 0;
+      p *= f; steps.push({ leg: l, factor: f });
+    }
+    for (const l of other) p *= l.p || 0; // córners, tarjetas…: sin modelo conjunto, se multiplican
+    return { p, steps, other, fns, mat, P, lam };
+  }
+  function jointP(legs) {
+    const by = new Map();
+    for (const l of legs) { if (!by.has(l.matchKey)) by.set(l.matchKey, []); by.get(l.matchKey).push(l); }
+    let p = 1;
+    for (const g of by.values()) {
+      if (g.length > 1) { const gi = groupInfo(g); p *= gi ? gi.p : g.reduce((a, l) => a * (l.p || 0), 1); }
+      else p *= g[0].p || 0;
+    }
+    return p;
+  }
+
   function totals(stake, legs, oddOf) {
     const ready = legs.length && legs.every(l => oddOf(l) > 1);
     const odd = legs.reduce((a, l) => a * (oddOf(l) || 1), 1);
-    const p = legs.reduce((a, l) => a * (l.p || 0), 1);
+    const p = jointP(legs);
     const payout = stake * odd;
     return { ready, odd, p, payout, profit: payout - stake, ev: p * payout - stake };
   }
@@ -80,7 +118,7 @@
     if (S.legs.length > 10) warn.push(`Tienes ${S.legs.length} selecciones; tu regla es máximo 10.`);
     if (c.low.length) warn.push(`${c.low.length} selección(es) con momio menor a 1.30.`);
     if (c.volados.length) warn.push(`${c.volados.length} volado(s) (45–55%): son los que tumban tickets.`);
-    if (c.sameMatch) warn.push('Hay selecciones del mismo partido: se mueven juntas, la probabilidad real puede ser distinta.');
+
     // Colchón de sorpresas: los favoritos también pierden.
     const favs = S.legs.filter(l => l.p >= 0.6 && l.p < 0.8);
     if (favs.length >= 2) warn.push(`Colchón de sorpresas: ${favs.length} selecciones entre 60% y 80%. Un favorito de 70% falla 3 de cada 10; con estas, lo normal es fallar ${(favs.reduce((a, l) => a + 1 - l.p, 0)).toFixed(1)}.`);
@@ -114,6 +152,7 @@
         <span>Momio justo según el modelo</span><b class="num">${c.fair ? c.fair.toFixed(2) : '-'}</b>
       </div>
       <p class="note">"Con Draftea" usa tu momio donde lo escribiste y el provisional en el resto (${c.withDft} de ${S.legs.length} con Draftea). ${R.ready ? (R.ev >= 0 ? `En promedio ganarías ${money(R.ev)} por ticket a la larga.` : `En promedio pierdes ${money(-R.ev)} por ticket a la larga: la casa paga menos de lo que vale.`) : ''} Pega 1 de cada ${c.p > 0 ? Math.round(1 / c.p).toLocaleString('es-MX') : '∞'} veces.</p>
+      ${sgpHtml()}
       ${warn.length ? `<div class="warnbox">${warn.map(esc).join('<br>')}</div>` : ''}
       ${optHtml()}
       <button class="btn ghost sm" id="slipclear">Vaciar ticket</button>`
@@ -133,6 +172,36 @@
     const ok = $('optok'); if (ok) ok.addEventListener('click', () => { S.legs = OPT.after.map(l => ({ ...l })); OPT = null; save(); setTimeout(render); });
     const no = $('optno'); if (no) no.addEventListener('click', () => { OPT = null; setTimeout(render); });
     document.querySelectorAll('[data-slip]').forEach(b => { const on = has(b.dataset.slip); b.classList.toggle('on', on); b.textContent = on ? '✓' : '+'; b.setAttribute('aria-pressed', on); });
+  }
+
+  // Mismo partido (SGP): cuánto riesgo agrega cada selección y qué se puede sumar casi gratis.
+  function sgpHtml() {
+    const by = new Map();
+    for (const l of S.legs) { if (!by.has(l.matchKey)) by.set(l.matchKey, []); by.get(l.matchKey).push(l); }
+    let html = '';
+    for (const [mk, g] of by) {
+      const gi = groupInfo(g);
+      if (!gi) continue;
+      const indep = g.reduce((a, l) => a * (l.p || 0), 1);
+      const rows = gi.steps.slice(1).map(s => {
+        const need = s.factor > 0 ? 1 / s.factor : Infinity;
+        const tag = s.factor >= 0.97 ? '<span class="st ok">no agrega riesgo</span>' : s.factor >= 0.85 ? '<span class="st lean">poco riesgo</span>' : '<span class="st vol">riesgo real</span>';
+        return s.factor >= 0.97
+          ? `<li><b>${esc(s.leg.label)}</b>: ${tag} (×${s.factor.toFixed(2)}). Si ya se cumple lo demás, esta casi siempre se cumple: lo que Draftea le sume al momio es ganancia.</li>`
+          : `<li><b>${esc(s.leg.label)}</b>: la prob. se multiplica por ${s.factor.toFixed(2)} ${tag}. Conviene solo si Draftea sube el momio del SGP al menos <b>×${need.toFixed(2)}</b> al agregarla.</li>`;
+      }).join('');
+      // Agregados casi gratis: mercados del mismo partido que pasan ≥ 95% de las veces dado lo que ya llevas.
+      const pool = POOL.get(mk), defs = DEFS(), have = new Set(g.map(l => l.key));
+      const base = gi.P(gi.fns);
+      const free = pool ? [...pool.items.values()].filter(x => !have.has(x.key) && defs[x.key.slice(mk.length + 1)])
+        .map(x => ({ x, f: base > 0 ? gi.P([...gi.fns, defs[x.key.slice(mk.length + 1)]]) / base : 0 }))
+        .filter(o => o.f >= 0.95 && o.x.p < 0.97).sort((a, b) => a.x.p - b.x.p).slice(0, 3) : [];
+      const freeHtml = free.length ? `<p class="m">Casi gratis con lo que ya llevas (pasan ≥ 95% de las veces si se cumple lo demás): ${free.map(o => `${esc(o.x.label)} (×${o.f.toFixed(2)}) ${window.RadarSlipBtn ? window.RadarSlipBtn({ ...o.x, matchKey: mk, match: g[0].match }) : ''}`).join(' · ')}</p>` : '';
+      html += `<div class="sgp"><b>Mismo partido: ${esc(g[0].match)}</b>
+        <p class="m">Juntas: <b>${pct(gi.p)}</b> (si fueran independientes saldría ${pct(indep)}; están ligadas)</p>
+        ${rows ? `<ul>${rows}</ul>` : ''}${gi.other.length ? `<p class="m">${gi.other.length} selección(es) de córners/tarjetas se calculan aparte.</p>` : ''}${freeHtml}</div>`;
+    }
+    return html;
   }
 
   // Botón Optimizar ticket y su propuesta (antes vs después).
@@ -181,6 +250,6 @@
 
   function snapshot() { return JSON.parse(JSON.stringify({ stake: S.stake, legs: S.legs })); }
   function loadTicket(t) { OPT = null; S = { stake: +t.stake || 10, legs: JSON.parse(JSON.stringify(t.legs || [])) }; render(); }
-  window.RadarSlip = { register, add, remove, has, refresh: render, calc: () => calc(), snapshot, load: loadTicket };
+  window.RadarSlip = { jointP, register, add, remove, has, refresh: render, calc: () => calc(), snapshot, load: loadTicket };
   init();
 })();

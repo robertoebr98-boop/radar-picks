@@ -93,7 +93,7 @@
 
   function legOf(x) {
     const m = x.match, mk = `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`;
-    return { key: `${mk}:${x.leg.id}`, matchKey: mk, t: m.ev.date, match: `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`, label: x.leg.label, p: x.leg.p, prov: +(x.leg.odd || x.leg.est).toFixed(2), provSrc: x.leg.odd ? 'ESPN' : 'estimado' };
+    return { key: `${mk}:${x.leg.id}`, matchKey: mk, lam: m.res ? [m.res.lh, m.res.la] : null, t: m.ev.date, match: `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`, label: x.leg.label, p: x.leg.p, prov: +(x.leg.odd || x.leg.est).toFixed(2), provSrc: x.leg.odd ? 'ESPN' : 'estimado' };
   }
   function btn(x) { return window.RadarSlipBtn ? window.RadarSlipBtn(legOf(x)) : ''; }
 
@@ -182,7 +182,7 @@
   function registerMatch(m) {
     if (!window.RadarSlip || !window.RadarSlip.register) return;
     const mk = `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`, title = `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`;
-    for (const x of mainRows(m)) window.RadarSlip.register({ key: `${mk}:${x.id}`, matchKey: mk, t: m.ev.date, match: title, label: x.label, p: x.p, prov: +x.prov.toFixed(2), provSrc: x.src });
+    for (const x of mainRows(m)) window.RadarSlip.register({ key: `${mk}:${x.id}`, matchKey: mk, lam: m.res ? [m.res.lh, m.res.la] : null, t: m.ev.date, match: title, label: x.label, p: x.p, prov: +x.prov.toFixed(2), provSrc: x.src });
   }
 
   // Mercados de un partido: resultado, goles y ambos anotan (modelo + momio real si hay) y
@@ -218,7 +218,7 @@
     for (const x of rows) {
       if (x.group !== g) { g = x.group; html += `<div class="mkg">${esc(g)}</div>`; }
       const vol = x.p >= 0.45 && x.p <= 0.55;
-      const leg = { key: `${mkKey}:${x.id}`, matchKey: mkKey, t: m.ev.date, match: title, label: x.label, p: x.p, prov: +x.prov.toFixed(2), provSrc: x.src };
+      const leg = { key: `${mkKey}:${x.id}`, matchKey: mkKey, lam: m.res ? [m.res.lh, m.res.la] : null, t: m.ev.date, match: title, label: x.label, p: x.p, prov: +x.prov.toFixed(2), provSrc: x.src };
       html += `<div class="mkr${x.p >= 0.7 ? ' hi' : ''}"><span>${esc(x.label)}${vol ? ' <span class="st vol">volado</span>' : ''}</span><span class="num">${pct(x.p)}</span><span class="num">${f2(x.prov)}<br><span class="m">${esc(x.src)}</span></span>${window.RadarSlipBtn ? window.RadarSlipBtn(leg) : ''}</div>`;
     }
     panel.innerHTML = h2hHtml + `<div class="mkr hd"><span>Mercado</span><span>Prob.</span><span>Momio</span><span></span></div>${html}<p class="note">${esc(note)} "estimado" = momio justo del modelo menos el margen típico de la casa (6% en goles, 8% en córners/tarjetas). Escribe el real de Draftea en la calculadora. En verde, prob ≥ 70%.</p>`;

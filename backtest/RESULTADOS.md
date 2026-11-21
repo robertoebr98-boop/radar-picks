@@ -98,3 +98,9 @@ Además: Liga MX Apertura 2026 no tiene play-in (año de Mundial): los 8 primero
 Calibración del modelo (7,994 partidos): el Poisson exagera los extremos. Decía 46% → pasó 51%; decía 72% → pasó 65.5%. Promedio real de ambos anotan: 54.7% (11,467 partidos).
 Ajuste: p' = 0.54 + 0.6·(p − 0.54). Brier de ambos anotan 0.2465 → 0.2456 (k 0.8: 0.2459, k 0.5: 0.2459, k 0.4: 0.2462). Después del ajuste: dijo 47.5% → pasó 49.4%; 54.6% → 55.0%; 61.9% → 66.0%.
 Lectura práctica: ambos anotan rara vez pasa de 65% en el modelo; es un mercado de momio ~1.70–1.90 que solo conviene cuando la casa paga más que el justo.
+
+## Selecciones correlacionadas del mismo partido, 21-nov-2026
+Datos reales (11,467 partidos): P(más de 2.5) 53.6% · P(ambos anotan) 54.7% · P(local anota) 77.5% · P(visita anota) 71.0%.
+Dado más de 2.5: ambos anotan 79.5% · local anota 92.6% · visita anota 86.9%. P(más de 2.5 y ambos anotan) = 42.6% (no 29% como si fueran independientes).
+"Equipo anota" con ambos anotan ya incluido es 100% redundante. El modelo (matriz de marcadores) reproduce el 0.80 de ambos anotan | más de 2.5.
+Regla en la calculadora: una selección del mismo partido conviene solo si Draftea sube el momio del SGP al menos ×(1/factor condicional).

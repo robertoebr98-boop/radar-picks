@@ -285,7 +285,7 @@
         <td><span class="mk">${esc(mk.label)}</span><span class="rg">justo ${f2(mk.fair)}</span> ${tagHtml(v)}</td>
         <td class="num">${pct(mk.p)} <span class="rg">/ ${pct(mk.worst)}</span><div class="meter"><i style="width:${mk.p * 100}%"></i>${be ? `<s style="left:${be}%"></s>` : ''}</div></td>
         <td><input class="odd" inputmode="decimal" data-id="${mk.id}" value="${odd || ''}" placeholder="—" aria-label="Momio ${esc(mk.label)}"></td>
-        <td class="addc">${slipBtn({ key: `${matchKey}:${mk.id}`, matchKey, t: c.fixture ? c.fixture.date : null, match: matchName, label: mk.label, p: mk.p, ...provOf(mk, odd) })}</td></tr>`;
+        <td class="addc">${slipBtn({ key: `${matchKey}:${mk.id}`, matchKey, lam: [res.lh, res.la], t: c.fixture ? c.fixture.date : null, match: matchName, label: mk.label, p: mk.p, ...provOf(mk, odd) })}</td></tr>`;
     }
     $('mkts').innerHTML = html;
     $('oddsrc').textContent = S.oddsFrom ? `momios precargados: ${S.oddsFrom}` : '';
