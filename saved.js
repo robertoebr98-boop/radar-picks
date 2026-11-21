@@ -5,13 +5,15 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = x => '$' + (isFinite(x) ? x.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-');
   const KEY = 'radar.saved';
+  const DK = 'radar.saved.del', SK = 'radar.synckey';
   let list = load();
+  let tomb = (() => { try { return JSON.parse(localStorage.getItem(DK)) || {}; } catch (e) { return {}; } })();
   let armed = null; // id con "borrar" pendiente de confirmar
   let openId = null;
 
   function load() { try { const v = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
   function persist() {
-    try { localStorage.setItem(KEY, JSON.stringify(list)); return true; }
+    try { localStorage.setItem(KEY, JSON.stringify(list)); localStorage.setItem(DK, JSON.stringify(tomb)); scheduleSync(); return true; }
     catch (e) { $('savedmsg').innerHTML = '<div class="err">Este navegador no permite guardar (modo privado). Usa "Exportar" para no perderlos.</div>'; return false; }
   }
 
@@ -25,7 +27,7 @@
     const name = ($('savename').value || '').trim() || `Ticket ${fmt(Date.now())}`;
     const c = window.RadarSlip.calc();
     list.unshift({
-      id: String(Date.now()), name, createdAt: Date.now(), stake: snap.stake, legs: snap.legs,
+      id: String(Date.now()), name, createdAt: Date.now(), updatedAt: Date.now(), stake: snap.stake, legs: snap.legs,
       odd: c.real.odd, payout: c.real.payout, p: c.p, withDft: c.withDft, status: 'pendiente', kind: $('savekind').value || (c.real.odd >= 100 ? 'sonador' : 'regular'),
     });
     if (persist()) {
@@ -35,10 +37,10 @@
     render();
   }
 
-  function setStatus(id, status) { const t = list.find(x => x.id === id); if (t) { t.status = status; persist(); render(); } }
+  function setStatus(id, status) { const t = list.find(x => x.id === id); if (t) { t.status = status; t.updatedAt = Date.now(); persist(); render(); } }
   function del(id) {
     if (armed !== id) { armed = id; render(); return; }
-    list = list.filter(x => x.id !== id); armed = null; persist(); render();
+    list = list.filter(x => x.id !== id); tomb[id] = Date.now(); armed = null; persist(); render();
   }
   function openInCalc(id) {
     const t = list.find(x => x.id === id);
@@ -124,7 +126,53 @@
     r.readAsText(file);
   }
 
+  // ---- Nube: los mismos tickets en todos tus dispositivos (protegido con tu código) ----
+  const ts = t => +t.updatedAt || +t.createdAt || 0;
+  function merge(a, b) {
+    const del = { ...a.del };
+    for (const [k, v] of Object.entries(b.del || {})) del[k] = Math.max(del[k] || 0, +v || 0);
+    const by = new Map();
+    for (const t of [...a.tickets, ...(b.tickets || [])]) if (t && t.id && Array.isArray(t.legs)) { const o = by.get(t.id); if (!o || ts(t) > ts(o)) by.set(t.id, t); }
+    const tickets = [...by.values()].filter(t => !(del[t.id] >= ts(t))).sort((x, y) => y.createdAt - x.createdAt);
+    return { tickets, del };
+  }
+  const syncKey = () => { try { return localStorage.getItem(SK) || ''; } catch (e) { return ''; } };
+  let syncT = null, syncing = false, again = false;
+  function scheduleSync() { if (!syncKey()) return; clearTimeout(syncT); syncT = setTimeout(sync, 600); }
+  function syncMsg(txt, cls = '') { const e = $('syncst'); if (e) { e.textContent = txt; e.className = 'm ' + cls; } }
+  async function sync() {
+    const key = syncKey(); if (!key) { syncMsg('apagado'); return; }
+    if (syncing) { again = true; return; }
+    syncing = true; syncMsg('sincronizando…');
+    try {
+      const h = { 'x-key': key, 'content-type': 'application/json' };
+      const r = await fetch('/api/tickets', { headers: h, cache: 'no-store' });
+      if (r.status === 401) { syncMsg('código incorrecto', 'bad'); return; }
+      if (r.status === 503) { syncMsg('falta activar la nube en Vercel', 'bad'); return; }
+      if (!r.ok) throw new Error(r.status);
+      const m = merge({ tickets: list, del: tomb }, await r.json());
+      list = m.tickets; tomb = m.del;
+      localStorage.setItem(KEY, JSON.stringify(list)); localStorage.setItem(DK, JSON.stringify(tomb));
+      const w = await fetch('/api/tickets', { method: 'PUT', headers: h, body: JSON.stringify({ tickets: list, del: tomb }) });
+      if (!w.ok) throw new Error(w.status);
+      syncMsg(`al día · ${list.length} ticket(s) · ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`, 'good');
+      render();
+    } catch (e) { syncMsg('sin conexión con la nube; se guardó en este dispositivo', 'bad'); }
+    finally { syncing = false; if (again) { again = false; scheduleSync(); } }
+  }
+  function syncUi() {
+    const on = !!syncKey();
+    $('synckey').value = ''; $('synckey').classList.toggle('hidden', on); $('syncgo').classList.toggle('hidden', on); $('syncoff').classList.toggle('hidden', !on);
+    if (!on) syncMsg('apagado');
+  }
+  window.RadarSaved.merge = merge;
+
   function init() {
+    $('syncgo').addEventListener('click', () => { const k = $('synckey').value.trim(); if (!k) return; try { localStorage.setItem(SK, k); } catch (e) {} syncUi(); sync(); });
+    $('synckey').addEventListener('keydown', e => { if (e.key === 'Enter') $('syncgo').click(); });
+    $('syncoff').addEventListener('click', () => { try { localStorage.removeItem(SK); } catch (e) {} syncUi(); });
+    syncUi(); sync();
+    window.addEventListener('focus', () => scheduleSync());
     $('savebtn').addEventListener('click', saveCurrent);
     $('savename').addEventListener('keydown', e => { if (e.key === 'Enter') saveCurrent(); });
     $('exportbtn').addEventListener('click', exportFile);
