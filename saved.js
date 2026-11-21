@@ -241,6 +241,8 @@
   }
   window.RadarSaved.merge = merge;
   // Partidos que ya están en tickets abiertos (para no apilar riesgo en el mismo partido).
+  // partido → nombres de tickets pendientes donde ya está.
+  window.RadarSaved.openByMatch = () => { const m = new Map(); for (const t of list) if (t.status === 'pendiente') for (const l of t.legs || []) if (l.matchKey) { const a = m.get(l.matchKey) || []; if (!a.includes(t.name)) a.push(t.name); m.set(l.matchKey, a); } return m; };
   window.RadarSaved.openCount = () => list.filter(t => t.status === 'pendiente').length;
   window.RadarSaved.openMatchKeys = () => new Set(list.filter(t => t.status === 'pendiente').flatMap(t => t.legs.map(l => l.matchKey)).filter(Boolean));
 
