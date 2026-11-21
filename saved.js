@@ -10,6 +10,7 @@
   let tomb = (() => { try { return JSON.parse(localStorage.getItem(DK)) || {}; } catch (e) { return {}; } })();
   let armed = null; // id con "borrar" pendiente de confirmar
   let openId = null;
+  const LIVE = new Map(); // id de ticket → estados por selección (marcador en vivo)
 
   function load() { try { const v = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
   function persist() {
@@ -82,9 +83,9 @@
       return `<div class="sv">
         <button class="svh" data-toggle="${t.id}" aria-expanded="${open}">
           <span><b>${esc(t.name)}</b><br><span class="m">${fmt(t.createdAt)} · ${t.legs.length} selecciones · momio ${(+t.odd || 0).toFixed(2)} · ${money(+t.stake)} → ${money(+t.payout)}</span></span>
-          <span>${t.kind === 'sonador' ? '<span class="st lean">soñador</span> ' : ''}<span class="st ${cls}">${esc(t.status)}</span></span>
+          <span>${t.kind === 'sonador' ? '<span class="st lean">soñador</span> ' : ''}<span class="st ${cls}">${esc(t.status)}${t.auto ? ' (auto)' : ''}</span></span>
         </button>
-        ${legs}
+        ${liveHtml(t)}${legs}
         <div class="svact">
           <button class="btn ghost sm" data-open="${t.id}">Abrir en calculadora</button>
           <button class="btn ghost sm" data-st="${t.id}:ganado">Ganado</button>
@@ -125,6 +126,52 @@
     };
     r.readAsText(file);
   }
+
+  // ---- Marcador en vivo de los tickets pendientes ----
+  const hm = iso => new Date(iso).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+  const CHIP = {
+    'lock-ok': ['ok', '✓ asegurada'], won: ['ok', '✓'], ok: ['lean', 'va ✓'], risk: ['vol', 'en riesgo'],
+    'lock-bad': ['bad', '✗ ya no se da'], lost: ['bad', '✗'], 'in-na': ['no', 'en juego'], 'post-na': ['no', 'revisa a mano'], nodata: ['no', 'sin datos'],
+  };
+  function liveHtml(t) {
+    const S = LIVE.get(t.id);
+    if (!S || t.status !== 'pendiente' || !S.some(s => s.st !== 'pre' && s.st !== 'nodata')) return '';
+    const n = k => S.filter(s => k.includes(s.st)).length;
+    const head = `<div class="lvh"><span class="live" aria-hidden="true"></span> En vivo: <b>${n(['won', 'lock-ok', 'ok'])}</b> van bien · <b>${n(['risk'])}</b> en riesgo · <b>${n(['lost', 'lock-bad'])}</b> fallaron · ${n(['pre'])} por empezar</div>`;
+    const rows = t.legs.map((l, i) => {
+      const s = S[i] || { st: 'nodata' };
+      const [cls, txt] = s.st === 'pre' ? ['no', s.date ? 'empieza ' + hm(s.date) : 'por empezar'] : (CHIP[s.st] || ['no', s.st]);
+      return `<div class="lvr"><span><b>${esc(l.label)}</b> <span class="m">${esc(l.match)}</span></span><span class="num">${esc(s.score || '')}${s.detail && s.st !== 'pre' ? ` <span class="m">${esc(s.detail)}</span>` : ''}</span><span class="st ${cls}">${esc(txt)}</span></div>`;
+    }).join('');
+    return `<div class="lv">${head}${rows}</div>`;
+  }
+  let liveBusy = false;
+  async function refreshLive() {
+    if (liveBusy || !window.RadarLive || !window.RadarData) return;
+    const pend = list.filter(t => t.status === 'pendiente');
+    if (!pend.length) return;
+    liveBusy = true;
+    try {
+      const evs = await window.RadarLive.fetchEvents(pend.flatMap(t => t.legs));
+      let changed = false;
+      for (const t of pend) {
+        const S = t.legs.map(l => window.RadarLive.legState(l, evs.get(l.matchKey)));
+        LIVE.set(t.id, S);
+        t.legs.forEach((l, i) => { const st = S[i].st; const h = st === 'won' ? true : st === 'lost' ? false : undefined; if (h !== undefined && l.hit !== h) { l.hit = h; changed = true; } });
+        const g = window.RadarLive.grade(S);
+        if (g) { t.status = g; t.auto = true; t.updatedAt = Date.now(); changed = true; }
+      }
+      if (changed) persist();
+      render();
+    } finally { liveBusy = false; }
+  }
+  // Solo consulta mientras haya partidos cerca o en juego (cada minuto), y con la página a la vista.
+  function liveDue() {
+    const now = Date.now();
+    return list.some(t => t.status === 'pendiente' && t.legs.some(l => l.t && now >= new Date(l.t).getTime() - 15 * 60e3 && now <= new Date(l.t).getTime() + 4 * 3600e3));
+  }
+  setInterval(() => { if (document.visibilityState === 'visible' && liveDue()) refreshLive(); }, 60e3);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshLive(); });
 
   // ---- Nube: los mismos tickets en todos tus dispositivos (protegido con tu código) ----
   const ts = t => +t.updatedAt || +t.createdAt || 0;
@@ -171,7 +218,7 @@
     $('syncgo').addEventListener('click', () => { const k = $('synckey').value.trim(); if (!k) return; try { localStorage.setItem(SK, k); } catch (e) {} syncUi(); sync(); });
     $('synckey').addEventListener('keydown', e => { if (e.key === 'Enter') $('syncgo').click(); });
     $('syncoff').addEventListener('click', () => { try { localStorage.removeItem(SK); } catch (e) {} syncUi(); });
-    syncUi(); sync();
+    syncUi(); sync(); refreshLive();
     window.addEventListener('focus', () => scheduleSync());
     $('savebtn').addEventListener('click', saveCurrent);
     $('savename').addEventListener('keydown', e => { if (e.key === 'Enter') saveCurrent(); });

@@ -164,7 +164,7 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
 
 .top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .fresh{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-.fresh .live{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.fresh .live,.lvh .live{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .btn.sm{padding:6px 10px;font-size:12px}
 .icon{background:var(--sub);border:1px solid var(--line2);color:var(--fg);border-radius:8px;padding:6px 9px;cursor:pointer;font-size:12px}
 
@@ -256,6 +256,10 @@ section.card>details.sec[open]{display:flex;flex-direction:column;gap:12px}
 .leg{grid-template-columns:1fr auto auto !important}
 td.addc{width:34px;padding-left:6px}
 .strat{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;font-size:12.5px;padding:10px 12px;border-radius:10px;background:var(--sub);border:1px solid var(--line)}
+.lv{display:flex;flex-direction:column;gap:4px;padding:0 12px 10px}
+.lvh{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.lvr{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;font-size:12px;border-top:1px solid var(--line);padding-top:5px}
+.lvr .m{font-size:11px;color:var(--muted)}
 .sv{border:1px solid var(--line);border-radius:12px;background:var(--sub);overflow:hidden}
 .svh{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;width:100%;padding:10px 12px;background:transparent;border:0;cursor:pointer;text-align:left;font-size:13px}
 .svh .m,.svleg .m{font-size:11px;color:var(--muted)}
@@ -292,7 +296,7 @@ td.addc{width:34px;padding-left:6px}
     <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--on-accent)" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="var(--on-accent)"/></svg>
     Radar de picks
   </h1>
-    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-o</span>
+    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-p</span>
       <button class="btn sm" id="refresh">Actualizar</button>
       <button class="icon" id="theme" aria-label="Cambiar tema claro u oscuro">☀︎</button></div>
   </div>
@@ -435,16 +439,17 @@ td.addc{width:34px;padding-left:6px}
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
 </div>
 <button class="slipbar hidden" id="slipbar" aria-label="Ver ticket"></button>
-<script src="model.js?v=20261121o"></script>
-<script src="context.js?v=20261121o"></script>
-<script src="data.js?v=20261121o"></script>
-<script src="app.js?v=20261121o"></script>
-<script src="day.js?v=20261121o"></script>
-<script src="props.js?v=20261121o"></script>
-<script src="reading.js?v=20261121o"></script>
-<script src="dayui.js?v=20261121o"></script>
-<script src="optimize.js?v=20261121o"></script>
-<script src="slip.js?v=20261121o"></script>
-<script src="saved.js?v=20261121o"></script>
+<script src="model.js?v=20261121p"></script>
+<script src="context.js?v=20261121p"></script>
+<script src="data.js?v=20261121p"></script>
+<script src="app.js?v=20261121p"></script>
+<script src="day.js?v=20261121p"></script>
+<script src="props.js?v=20261121p"></script>
+<script src="reading.js?v=20261121p"></script>
+<script src="dayui.js?v=20261121p"></script>
+<script src="optimize.js?v=20261121p"></script>
+<script src="slip.js?v=20261121p"></script>
+<script src="live.js?v=20261121p"></script>
+<script src="saved.js?v=20261121p"></script>
 </body>
 </html>

@@ -207,6 +207,19 @@ t('lectura del partido: favorito claro, parejo y acierto', () => {
   assert(b.winner === 'x' && /parejo/.test(b.lines[0]), JSON.stringify(b));
   assert(RR.hit(a, 2, 0) === true && RR.hit(a, 1, 1) === false && RR.hit(b, 1, 0) === true && RR.hit(b, 3, 1) === false);
 });
+t('marcador en vivo: asegurada, en riesgo, calificación', () => {
+  global.RadarModel = M;
+  const LV = require('../live.js');
+  const over25 = (h, a) => h + a >= 3, under35 = (h, a) => h + a <= 3;
+  assert(LV.lockState(over25, 2, 1) === 'lock-ok' && LV.lockState(over25, 1, 0) === 'risk');
+  assert(LV.lockState(under35, 1, 1) === 'ok' && LV.lockState(under35, 3, 1) === 'lock-bad');
+  const leg = { key: 'mex.1:1:2:O2.5', matchKey: 'mex.1:1:2' };
+  assert(LV.fnFor(leg)); {
+    assert(LV.legState(leg, { state: 'in', hs: 2, as: 1 }).st === 'lock-ok');
+    assert(LV.legState(leg, { state: 'post', completed: true, hs: 1, as: 0 }).st === 'lost');
+  }
+  assert(LV.grade([{ st: 'won' }, { st: 'won' }]) === 'ganado' && LV.grade([{ st: 'won' }, { st: 'lost' }]) === 'perdido' && LV.grade([{ st: 'won' }, { st: 'ok' }]) === null);
+});
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
   OP._useMemory({});
