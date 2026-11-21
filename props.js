@@ -67,6 +67,7 @@
     }
     for (const [side, m, nm] of [['H', cH, homeName], ['A', cA, awayName]]) for (const line of [3.5, 4.5, 5.5]) add(`C${side}>${line}`, 'Córners', `${nm} más de ${line} córners`, overProb(m, DISP.corners, line));
     // Remates a puerta (Draftea no ofrece remates totales, reportado 21-nov)
+    const sH = expCount(h.sF, h.n, a.sA, a.n, L.shots) * HOME, sA = expCount(a.sF, a.n, h.sA, h.n, L.shots) * AWAY; // solo para el esperado
     const tH = expCount(h.tF, h.n, a.tA, a.n, L.sot) * HOME, tA = expCount(a.tF, a.n, h.tA, h.n, L.sot) * AWAY;
     for (const line of [6.5, 7.5, 8.5, 9.5]) { const p = overProb(tH + tA, DISP.sot, line); add(`T>${line}`, 'Remates a puerta', `Más de ${line} remates a puerta`, p); add(`T<${line}`, 'Remates a puerta', `Menos de ${line} remates a puerta`, 1 - p); }
     for (const [side, m, nm] of [['H', tH, homeName], ['A', tA, awayName]]) for (const line of [2.5, 3.5, 4.5]) add(`T${side}>${line}`, 'Remates a puerta', `${nm} más de ${line} a puerta`, overProb(m, DISP.sot, line));
