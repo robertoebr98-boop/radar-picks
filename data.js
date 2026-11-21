@@ -96,6 +96,9 @@
         for (const st of e.stats || []) if (st.name) s[st.name] = st.value;
         const w = s.wins || 0, dr = s.ties || 0, l = s.losses || 0;
         const gp = s.gamesPlayed || (w + dr + l);
+        // Si el equipo sale en varias tablas (p. ej. tabla general + cuadrangulares), se queda la de más partidos.
+        const prev = out.get(String(e.team.id));
+        if (prev && prev.gp >= gp) continue;
         out.set(String(e.team.id), {
           teamId: String(e.team.id), name: e.team.displayName, gp,
           gf: s.pointsFor || 0, ga: s.pointsAgainst || 0, w, d: dr, l,
