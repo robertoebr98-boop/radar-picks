@@ -348,7 +348,8 @@
     const groupOf = l => l.group || (l.prop ? 'Conteo' : ({ '1': 'R', 'X': 'R', '2': 'R', '1X': 'R', 'X2': 'R', '12': 'R' }[l.id] || (/^(1|2|1X|X2|12)&/.test(l.id) ? 'R' : 'Goles')));
     const per = [];
     for (const m of matches) {
-      const ok = (m.legs || []).filter(l => l.p >= minP && (l.odd || l.est) >= minOdd && l.tag !== 'volado').sort((a, b) => b.p - a.p).slice(0, 8);
+      const ban = opts.ban || new Set(), mk = `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`;
+      const ok = (m.legs || []).filter(l => !ban.has(`${mk}:${l.id}`) && l.p >= minP && (l.odd || l.est) >= minOdd && l.tag !== 'volado').sort((a, b) => b.p - a.p).slice(0, 8);
       if (!ok.length) continue;
       const mat = m.res && M.scoreMatrix ? M.scoreMatrix(m.res.lh, m.res.la) : null;
       const joint = legs => {

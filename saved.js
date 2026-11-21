@@ -241,6 +241,7 @@
   }
   window.RadarSaved.merge = merge;
   // Partidos que ya están en tickets abiertos (para no apilar riesgo en el mismo partido).
+  window.RadarSaved.openCount = () => list.filter(t => t.status === 'pendiente').length;
   window.RadarSaved.openMatchKeys = () => new Set(list.filter(t => t.status === 'pendiente').flatMap(t => t.legs.map(l => l.matchKey)).filter(Boolean));
 
   function init() {

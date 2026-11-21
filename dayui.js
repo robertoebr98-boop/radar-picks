@@ -191,7 +191,7 @@
   let DMODE = 'normal';
   let LADMIN = 1.30, LADP = 0.40, LAST = null, LASTREQ = null;
   // Ticket de N selecciones (para boosts): 0 = automático (el de siempre).
-  const NPICK = { n: 0, per: 1, minOdd: 1.20, boost: 0 };
+  const NPICK = { n: 0, per: 1, minOdd: 1.20, boost: 0, ban: new Set() };
   function buildNPick() {
     const box = $('npick'), auto = $('tkauto'); if (!box || !LAST) return;
     NPICK.n = +$('npn').value || 0; NPICK.per = +$('npper').value || 1; NPICK.minOdd = +$('npodd').value || 1.20; NPICK.boost = Math.max(0, +$('npboost').value || 0);
@@ -200,7 +200,8 @@
     const open = window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set();
     const all = LAST.matches.filter(m => !m.us), ms = all.filter(m => !open.has(`${m.lg}:${m.ev.homeId}:${m.ev.awayId}`));
     const skipped = all.length - ms.length;
-    const t = Y.pickN(ms, NPICK.n, { minP: 0.65, perMatch: NPICK.per, minOdd: NPICK.minOdd });
+    const openN = window.RadarSaved && window.RadarSaved.openCount ? window.RadarSaved.openCount() : 0;
+    const t = Y.pickN(ms, NPICK.n, { minP: 0.65, perMatch: NPICK.per, minOdd: NPICK.minOdd, ban: NPICK.ban });
     if (!t) { box.innerHTML = `<p class="note">Ninguna selección de 65%+ con momio ≥ ${f2(NPICK.minOdd)}. Baja el momio mínimo o sube "por partido".</p>`; return; }
     const bo = Y.boosted(t.odd, NPICK.boost), ev = t.p * bo - 1;
     const MO = window.RadarMoney, bank = (() => { try { return +localStorage.getItem('radar.bank') || 0; } catch (e) { return 0; } })();
@@ -209,14 +210,21 @@
     box.innerHTML = `<div class="tk">${!t.reached ? `<p class="note"><b>Solo alcanzan ${t.n} de ${NPICK.n}.</b> Sube "por partido", baja el momio mínimo o prueba otra fecha.</p>` : ''}
       <h3>Ticket de ${t.n} selecciones · ${t.matches} partidos ${safe ? '<span class="st ok">safe</span>' : ''}</h3>
       ${[...t.legs].sort((a, b) => byTime(a.match, b.match)).map(x => `<div class="leg"><span>${hr(x.match.ev.date)} <b>${esc(x.leg.label)}</b>${x.leg.prop ? ' <span class="st lean">conteo · estimado</span>' : ''}<br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)}</span></span>
-        <span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'aprox ' + f2(x.leg.est)}</span></span>${btn(x)}</div>`).join('')}
+        <span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'aprox ' + f2(x.leg.est)}</span></span>${btn(x)}<button class="npswap" data-swap="${esc(legOf(x).key)}" title="Draftea no la tiene: cambiar por la siguiente mejor" aria-label="Cambiar ${esc(x.leg.label)}">↻</button></div>`).join('')}
+      <p class="m npsw">¿Draftea no tiene alguna? Toca ↻ y se cambia por la siguiente mejor.${NPICK.ban.size ? ` <button class="btn ghost sm" id="npunban">Restaurar ${NPICK.ban.size} quitada(s)</button>` : ''}</p>
       <div class="rpgs"><span></span><span></span><span></span>
         <span>Prob. de acertar todo</span><span></span><b class="num">${pct(t.p)} <span class="m">1 de cada ${Math.max(1, Math.round(1 / t.p)).toLocaleString('es-MX')}</span></b>
         <span>Momio</span><span></span><b class="num">${f2(t.odd)}${NPICK.boost ? ` → ${f2(bo)} <span class="m">con boost ${NPICK.boost}%</span>` : ''}</b>
         <span>Valor esperado</span><span></span><b class="num ${ev >= 0 ? 'good' : 'bad'}">${ev >= 0 ? '+' : ''}${Math.round(ev * 100)}%</b>
         <span>Monto sugerido</span><span></span><b class="num">${sg ? '$' + sg.amount : '<span class="m">escribe tu saldo en la calculadora</span>'}</b></div>
       <button class="btn ghost sm" id="npadd">Pasar a la calculadora</button>
-      <p class="note">La combinación más probable de ${NPICK.n} selecciones de 65%+ con momio ≥ ${f2(NPICK.minOdd)}${NPICK.per > 1 ? `, hasta ${NPICK.per} por partido sin ir en contra entre sí` : ', una por partido'}.${skipped ? ` Sin ${skipped} partido(s) que ya están en tickets abiertos.` : ''}${t.real < t.legs.length ? ' Momios aprox.: revisa en Draftea.' : ''}${t.matches < t.legs.length ? ' En selecciones del mismo partido Draftea baja el momio (SGP): usa el que te dé Draftea en la calculadora.' : ''}${ev < 0 ? ' Valor esperado negativo: con estos momios no conviene.' : ''}</p></div>`;
+      <p class="note">La combinación más probable de ${NPICK.n} selecciones de 65%+ con momio ≥ ${f2(NPICK.minOdd)}${NPICK.per > 1 ? `, hasta ${NPICK.per} por partido sin ir en contra entre sí` : ', una por partido'}.${skipped ? ` Sin ${skipped} partido(s) que ya están en tickets abiertos.` : openN ? '' : ' Ojo: no tienes tickets pendientes en Mis tickets, así que no se quitó ningún partido. Guarda ahí lo que ya apostaste para que no se repita.'}${t.real < t.legs.length ? ' Momios aprox.: revisa en Draftea.' : ''}${t.matches < t.legs.length ? ' En selecciones del mismo partido Draftea baja el momio (SGP): usa el que te dé Draftea en la calculadora.' : ''}${ev < 0 ? ' Valor esperado negativo: con estos momios no conviene.' : ''}</p></div>`;
+    box.querySelectorAll('[data-swap]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.swap; NPICK.ban.add(k);
+      if (window.RadarSlip.has(k)) window.RadarSlip.remove(k); // si ya estaba en la calculadora, sale
+      buildNPick();
+    }));
+    const ub = $('npunban'); if (ub) ub.addEventListener('click', () => { NPICK.ban.clear(); buildNPick(); });
     $('npadd').addEventListener('click', () => {
       for (const x of t.legs) { const l = legOf(x); if (!window.RadarSlip.has(l.key)) window.RadarSlip.add(l); }
       if (sg && sg.amount && window.RadarSlip.setStake) window.RadarSlip.setStake(sg.amount);
