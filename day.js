@@ -185,8 +185,8 @@
             let groups = PROP_LGS.includes(lg) ? PROP_GROUPS : [];
             if (!groups.length && anyUp && root.RadarProps && root.RadarProps.selfCheck) {
               const ck = root.RadarProps.cachedCheck(lg);
-              if (ck) groups = PROP_GROUPS.filter(g => ck[g] && ck[g].ok);
-              else root.RadarProps.selfCheck(lg).catch(() => null);
+              const ck2 = ck || await Promise.race([root.RadarProps.selfCheck(lg).catch(() => null), new Promise(r => setTimeout(() => r(null), 25000))]);
+              if (ck2) groups = PROP_GROUPS.filter(g => ck2[g] && ck2[g].ok);
             }
             const pAvgs = anyUp && groups.length && root.RadarProps ? await root.RadarProps.leagueHistory(lg).catch(() => null) : null;
             // Por partido: consenso de casas y, si aún no empieza, sus últimos 5 enfrentamientos (en paralelo).

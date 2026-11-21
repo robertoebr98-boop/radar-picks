@@ -38,6 +38,14 @@
     render();
   }
 
+  // Guardar un ticket armado fuera de la calculadora (ej. Pronóstico soñador).
+  window.RadarSaved.saveTicket = o => {
+    if (!o || !o.legs || !o.legs.length) return false;
+    list.unshift({ id: String(Date.now()), name: o.name || `Ticket ${fmt(Date.now())}`, createdAt: Date.now(), updatedAt: Date.now(), stake: o.stake, legs: o.legs,
+      odd: o.odd, payout: o.stake * o.odd, p: o.p, withDft: 0, status: 'pendiente', kind: o.kind || 'regular' });
+    const ok = persist(); render(); return ok;
+  };
+
   function setStatus(id, status) { const t = list.find(x => x.id === id); if (t) { t.status = status; t.updatedAt = Date.now(); persist(); render(); } }
   function del(id) {
     if (armed !== id) { armed = id; render(); return; }

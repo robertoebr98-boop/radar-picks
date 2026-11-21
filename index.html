@@ -277,6 +277,14 @@ td.addc{width:34px;padding-left:6px}
 .rpgv.lean{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
 .rpgv.eq{color:var(--muted);background:var(--sub)}
 .rpgb{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dmode{display:inline-flex;border:1px solid var(--line2);border-radius:999px;padding:3px;gap:2px;align-self:flex-start}
+.dmode label{cursor:pointer}
+.dmode input{position:absolute;opacity:0;pointer-events:none}
+.dmode span{display:inline-block;padding:6px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted)}
+.dmode input:checked+span{background:var(--accent);color:#04121f}
+.dmode input:focus-visible+span{outline:2px solid var(--accent)}
+.xline{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:6px 10px;border-top:1px dashed var(--line);font-size:12px}
+.dreamtop{border:1px solid var(--warn);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
 .lv{display:flex;flex-direction:column;gap:4px;padding:0 12px 10px}
 .lvh{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap}
 .lvr{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;font-size:12px;border-top:1px solid var(--line);padding-top:5px}
@@ -317,7 +325,7 @@ td.addc{width:34px;padding-left:6px}
     <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--on-accent)" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="var(--on-accent)"/></svg>
     Radar de picks
   </h1>
-    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-u</span>
+    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-v</span>
       <button class="btn sm" id="refresh">Actualizar</button>
       <button class="icon" id="theme" aria-label="Cambiar tema claro u oscuro">☀︎</button></div>
   </div>
@@ -341,6 +349,10 @@ td.addc{width:34px;padding-left:6px}
       <input class="in" type="date" id="dday" aria-label="Fecha" style="flex:0 1 170px">
       <select class="in" id="dlg" aria-label="Liga o deporte"></select>
       <button class="btn" id="dgo">Pronosticar</button>
+    </div>
+    <div class="dmode" role="radiogroup" aria-label="Tipo de pronóstico">
+      <label><input type="radio" name="dmode" value="normal" checked> <span>Normal</span></label>
+      <label><input type="radio" name="dmode" value="dream"> <span>Soñador</span></label>
     </div>
     <div id="dftbox" class="dftbox">
       <label class="dfth"><input type="checkbox" id="dfton" checked> <b>Solo ligas de Draftea</b></label>
@@ -460,17 +472,17 @@ td.addc{width:34px;padding-left:6px}
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
 </div>
 <button class="slipbar hidden" id="slipbar" aria-label="Ver ticket"></button>
-<script src="model.js?v=20261121u"></script>
-<script src="context.js?v=20261121u"></script>
-<script src="data.js?v=20261121u"></script>
-<script src="app.js?v=20261121u"></script>
-<script src="day.js?v=20261121u"></script>
-<script src="props.js?v=20261121u"></script>
-<script src="reading.js?v=20261121u"></script>
-<script src="dayui.js?v=20261121u"></script>
-<script src="optimize.js?v=20261121u"></script>
-<script src="slip.js?v=20261121u"></script>
-<script src="live.js?v=20261121u"></script>
-<script src="saved.js?v=20261121u"></script>
+<script src="model.js?v=20261121v"></script>
+<script src="context.js?v=20261121v"></script>
+<script src="data.js?v=20261121v"></script>
+<script src="app.js?v=20261121v"></script>
+<script src="day.js?v=20261121v"></script>
+<script src="props.js?v=20261121v"></script>
+<script src="reading.js?v=20261121v"></script>
+<script src="dayui.js?v=20261121v"></script>
+<script src="optimize.js?v=20261121v"></script>
+<script src="slip.js?v=20261121v"></script>
+<script src="live.js?v=20261121v"></script>
+<script src="saved.js?v=20261121v"></script>
 </body>
 </html>

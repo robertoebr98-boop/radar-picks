@@ -50,6 +50,7 @@
       '<option value="all">Todo (fútbol + NBA + NFL)</option>',
     ].join('');
     $('dgo').addEventListener('click', () => run());
+    document.querySelectorAll('input[name=dmode]').forEach(r => r.addEventListener('change', () => { DMODE = r.value; if (LAST) render(LAST, LASTREQ && LASTREQ.date); }));
     dftPanel();
     $('dfton').addEventListener('change', () => { DFT.on = $('dfton').checked; saveDft(); dftPanel(); });
     $('dftlist').addEventListener('change', e => {
@@ -115,12 +116,21 @@
   }
   const fold = (title, body, cls = '') => `<details class="tk fold ${cls}"><summary>${title}</summary>${body}</details>`;
 
+  // Córners/tarjetas validados que valen la pena: prob >= 70% y momio estimado >= 1.30 (uno por grupo, máx. 2).
+  function xtra(m) {
+    const ps = (m.legs || []).filter(l => l.prop && l.p >= 0.70 && l.est >= Y.TICKET.MIN_ODD && l.tag !== 'volado').sort((a, b) => b.p - a.p);
+    const pick = []; for (const l of ps) if (!pick.some(x => x.group === l.group)) pick.push(l);
+    return pick.slice(0, 2).map(l => `<div class="xline"><span><span class="st lean">${esc(l.group)}</span> <b>${esc(l.label)}</b> <span class="m">${pct(l.p)} · pide ≥ ${f2(l.minNeeded)}</span></span>${btn({ match: m, leg: l })}</div>`).join('');
+  }
+
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
   let SHOWN = [];
+  let DMODE = 'normal';
   let LADMIN = 1.30, LADP = 0.40, LAST = null, LASTREQ = null;
   const DREAM = { stake: 5, target: 30000, days: 1, extra: [] };
   async function buildDream() {
+    const date = LASTREQ && LASTREQ.date;
     const box = $('dream'); if (!box || !LAST) return;
     DREAM.stake = Math.max(1, +$('drstake').value || 5); DREAM.target = Math.max(100, +$('drtarget').value || 30000); DREAM.days = +$('drdays').value || 1;
     let matches = [...LAST.matches];
@@ -140,8 +150,15 @@
       <div class="warnbox"><b>Probabilidad real: ${(t.p * 100).toFixed(t.p < 0.001 ? 4 : 2)}%</b>, o sea, pega <b>1 de cada ${oneIn.toLocaleString('es-MX')}</b> intentos. Jugando $${DREAM.stake} cada semana, en promedio tardarías ${oneIn > 104 ? `${(oneIn / 52).toFixed(0)} años` : `${oneIn} semanas`} en pegarlo y gastarías ~$${(oneIn * DREAM.stake).toLocaleString('es-MX')} en el camino. Valor esperado ${(t.ev * 100).toFixed(0)}% por ticket${t.real < t.legs.length ? ' (con momios estimados; con momios reales de Draftea cambia)' : ''}.
       ${p5 ? `<br>Para tener ~5% de probabilidad el momio debe ser ~20x: con estos partidos, momio ${p5.odd.toFixed(1)} pega ${(p5.p * 100).toFixed(1)}% ($${DREAM.stake} → $${Math.round(DREAM.stake * p5.odd)}).` : ''}</div>
       <div class="dlegs">${t.legs.map(x => `<div class="leg"><span>${hr(x.match.ev.date)} <b>${esc(x.leg.label)}</b>${x.leg.prop ? ' <span class="st lean" title="Córners/tarjetas: validado en 3,800 partidos de las 5 grandes ligas; momio estimado">conteo · estimado</span>' : ''}<br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)}</span></span><span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'aprox ' + f2(x.leg.est)}</span></span>${btn(x)}</div>`).join('')}</div>
-      <button class="btn ghost sm" id="dradd">Pasar el parlay soñador a la calculadora</button>
+      <div class="rpgb"><button class="btn" id="drsave">Guardar como soñador</button><button class="btn ghost" id="dradd">Pasar a la calculadora</button></div>
+      <div id="drmsg"></div>
       <p class="note">Elige en cada partido la selección que más momio da por cada punto de probabilidad que pierdes, hasta llegar al premio. Es la forma más probable de llegar a ese momio con estos partidos, pero sigue siendo una lotería: tómalo como entretenimiento, aparte de tus tickets regulares, y guárdalo en Mis tickets como "Soñador".</p>`;
+    const sv = $('drsave');
+    if (sv) sv.addEventListener('click', () => {
+      const legs = t.legs.map(x => legOf(x));
+      const ok = window.RadarSaved && window.RadarSaved.saveTicket && window.RadarSaved.saveTicket({ name: `Soñador ${date || ''} · $${DREAM.stake} → $${Math.round(DREAM.stake * t.odd).toLocaleString('es-MX')}`, stake: DREAM.stake, legs, odd: t.odd, p: t.p, kind: 'sonador' });
+      $('drmsg').innerHTML = ok ? '<p class="note good">Guardado en Mis tickets como soñador.</p>' : '<p class="note">No pude guardarlo en este navegador.</p>';
+    });
     const add = $('dradd');
     if (add) add.addEventListener('click', () => {
       for (const x of t.legs) { const l = legOf(x); if (!window.RadarSlip.has(l.key)) window.RadarSlip.add(l); }
@@ -248,7 +265,14 @@
     const modeCls = { normal: 'ok', cauteloso: 'vol', defensivo: 'bad' }[R.mode] || 'no';
     html += `<div class="strat"><span class="st ${modeCls}">Estrategia: ${esc(R.mode || 'normal')}</span> <span>${esc(R.why || '')}</span></div>`;
     if (!r.matches.length) html += '<p class="note">Ya no quedan partidos por empezar ese día. Abajo ves cómo le fue al modelo.</p>';
-    html += `<div class="tk"><h3>Ticket sugerido · ${t.legs.length} selecciones · solo partidos por empezar</h3>`;
+    const dreamForm = `<div class="opth">
+        <label class="m">Entrada $<input class="in sm" id="drstake" type="number" min="1" step="1" value="${DREAM.stake}" style="width:70px"></label>
+        <label class="m">Premio objetivo $<input class="in sm" id="drtarget" type="number" min="100" step="1000" value="${DREAM.target}" style="width:100px"></label>
+        <label class="m">Partidos de <select class="in sm" id="drdays">${[1, 2, 3].map(d => `<option value="${d}" ${d === DREAM.days ? 'selected' : ''}>${d === 1 ? 'este día' : d + ' días'}</option>`).join('')}</select></label>
+        <button class="btn sm" id="drgo">Armar</button></div>
+      <div id="dream"></div>`;
+    if (DMODE === 'dream') html += `<div class="dreamtop"><h3>Pronóstico soñador · entrada chica, premio grande</h3>${dreamForm}</div>`;
+    html += DMODE === 'dream' ? `<details class="tk fold"><summary>Ticket sugerido <span class="m">${t.legs.length} selecciones · prob ${pct(t.p)}</span></summary>` : `<div class="tk"><h3>Ticket sugerido · ${t.legs.length} selecciones · solo partidos por empezar</h3>`;
     if (t.legs.length) {
       html += [...t.legs].sort((a, b) => byTime(a.match, b.match)).map(x => `<div class="leg"><span>${hr(x.match.ev.date)} <b>${esc(x.leg.label)}</b><br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)}</span>${motLine(x.match)}</span>
         <span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'pide ≥ ' + f2(x.leg.minNeeded)}</span></span>${btn(x)}</div>`).join('');
@@ -256,17 +280,9 @@
       html += `<div class="sum"><span>Prob. de acertar todo: <b class="num">${pct(t.p)}</b></span><span>Momio total aprox.: <b class="num">${f2(t.odd)}</b></span></div>
         <p class="note">Prob ≥ ${Math.round(R.MIN_P * 100)}%, momio ≥ 1.30, sin volados. "Pide ≥": si Draftea da menos, quítala.</p>`;
     } else html += '<p class="note">Ningún partido de este día pasa los filtros. Mejor no apostar.</p>';
-    html += '</div>';
+    html += DMODE === 'dream' ? '</details>' : '</div>';
 
     html += '<div class="tools">';
-    // Parlay soñador: entrada chica, premio grande, con la probabilidad real a la vista.
-    html += fold('Parlay soñador <span class="m">entrada chica, premio grande</span>', `
-      <div class="opth">
-        <label class="m">Entrada $<input class="in sm" id="drstake" type="number" min="1" step="1" value="${DREAM.stake}" style="width:70px"></label>
-        <label class="m">Premio objetivo $<input class="in sm" id="drtarget" type="number" min="100" step="1000" value="${DREAM.target}" style="width:100px"></label>
-        <label class="m">Partidos de <select class="in sm" id="drdays">${[1, 2, 3].map(d => `<option value="${d}" ${d === DREAM.days ? 'selected' : ''}>${d === 1 ? 'este día' : d + ' días'}</option>`).join('')}</select></label>
-        <button class="btn sm" id="drgo">Armar</button></div>
-      <div id="dream"></div>`, 'dream');
     // Mejor momio para tu riesgo: ranking de combinaciones con prob. total mínima.
     html += fold('Mejor momio para tu riesgo <span class="m">combinaciones con prob. mínima</span>', `
       <div class="opth"><label class="m">Prob. total mínima <select class="in sm" id="ladp">${[0.30, 0.40, 0.50, 0.60].map(x => `<option value="${x}" ${x === LADP ? 'selected' : ''}>${Math.round(x * 100)}%</option>`).join('')}</select></label>
@@ -292,6 +308,7 @@
       registerMatch(m);
       html += `<div class="dmw"><button class="dm" ${clickable ? `data-lg="${m.lg}" data-h="${m.ev.homeId}" data-a="${m.ev.awayId}"` : 'disabled'}>
         <span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br><span class="m">${sub}</span>${motLine(m)}</span><span style="text-align:right">${right}</span></button>
+        ${xtra(m)}
         ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}</div>`;
     }
     if (r.matches.length) html += '</div>';
@@ -320,6 +337,7 @@
     const lm = $('ladmin'); if (lm) lm.addEventListener('change', () => { LADMIN = +lm.value; renderLadder(); });
     const lp = $('ladp'); if (lp) lp.addEventListener('change', () => { LADP = +lp.value; renderLadder(); });
     const dg = $('drgo'); if (dg) dg.addEventListener('click', () => buildDream());
+    if (DMODE === 'dream') buildDream();
     const all = $('addall');
     if (all) all.addEventListener('click', () => {
       for (const x of t.legs) { const l = legOf(x); if (!window.RadarSlip.has(l.key)) window.RadarSlip.add(l); }
