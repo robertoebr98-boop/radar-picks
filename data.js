@@ -13,6 +13,7 @@
     { id: 'fra.1', name: 'Ligue 1' },
     { id: 'ned.1', name: 'Eredivisie' },
     { id: 'por.1', name: 'Liga Portugal' },
+    { id: 'col.1', name: 'Liga BetPlay Dimayor (Colombia)' },
     { id: 'mex.w.1', name: 'Liga MX Femenil' },
     { id: 'eng.w.1', name: 'WSL (femenil)' },
     { id: 'esp.w.1', name: 'Liga F (femenil)' },

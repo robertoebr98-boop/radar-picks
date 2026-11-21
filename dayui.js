@@ -9,9 +9,22 @@
   const MAIN = ['mex.1', 'uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1'];
 
   // Ligas que Draftea MX suele ofrecer. No hay lista pública: es una lista conservadora y Roberto la ajusta en la página.
-  const DFT_DEFAULT = ['mex.1', 'mex.w.1', 'uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ned.1', 'por.1', 'eng.w.1', 'usa.nwsl', 'uefa.wchampions', 'nba', 'nfl'];
+  const DFT_DEFAULT = ['mex.1', 'col.1', 'mex.w.1', 'uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ned.1', 'por.1', 'eng.w.1', 'usa.nwsl', 'uefa.wchampions', 'nba', 'nfl'];
   const DKEY = 'radar.dft';
-  function loadDft() { try { const x = JSON.parse(localStorage.getItem(DKEY)); if (x && Array.isArray(x.lgs)) return x; } catch (e) { /* nada */ } return { on: true, lgs: DFT_DEFAULT }; }
+  function loadDft() {
+    const all = [...D.LEAGUES.map(l => l.id), 'nba', 'nfl'];
+    try {
+      const x = JSON.parse(localStorage.getItem(DKEY));
+      if (x && Array.isArray(x.lgs)) {
+        // Ligas nuevas en la página (que no existían cuando guardó): entran marcadas si están en la lista de Draftea.
+        const known = x.known || all.filter(id => id !== 'col.1');
+        for (const id of DFT_DEFAULT) if (!known.includes(id) && !x.lgs.includes(id)) x.lgs.push(id);
+        x.known = all;
+        return x;
+      }
+    } catch (e) { /* nada */ }
+    return { on: true, lgs: DFT_DEFAULT, known: all };
+  }
   let DFT = loadDft();
   function saveDft() { try { localStorage.setItem(DKEY, JSON.stringify(DFT)); } catch (e) { /* nada */ } }
   function dftPanel() {
@@ -44,7 +57,7 @@
       DFT.lgs = e.target.checked ? [...new Set([...DFT.lgs, id])] : DFT.lgs.filter(x => x !== id);
       saveDft();
     });
-    $('dftreset').addEventListener('click', () => { DFT = { on: true, lgs: DFT_DEFAULT }; saveDft(); dftPanel(); });
+    $('dftreset').addEventListener('click', () => { DFT = { on: true, lgs: DFT_DEFAULT, known: DFT.known }; saveDft(); dftPanel(); });
   }
 
   let ran = false;
