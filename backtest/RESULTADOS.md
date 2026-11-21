@@ -126,3 +126,19 @@ $5 → $30,000 = momio 6,000: probabilidad justa 0.017% (1 de cada ~6,000); con 
 ESPN trae córners, faltas y remates por partido en Liga MX y J1 (no tarjetas como estadística; se cuentan desde la lista de jugadas). football-data.co.uk solo trae resultados y momios para esas ligas.
 Para ligas fuera del backtest, la página predice cada partido de los últimos 150 días con sus 5 semanas previas y compara (props.js `evaluate`). Entra al ticket solo si: ≥ 60 partidos, ≥ 200 predicciones de 60%+, error total ≤ 3 puntos y cada tramo con 40+ casos ≤ 5 puntos.
 Prueba del criterio con ventanas de 150 días de Europa: córners pasó 4 de 4 ligas; tarjetas 4 de 8 (más ruidosas: solo pasan cuando de verdad están bien).
+
+## En vivo (medio tiempo) — 21-nov-2026
+
+`node backtest/inplay-backtest.js <carpeta-csv>` · 9,891 partidos (5 grandes ligas, 5 temporadas) con el marcador al descanso.
+Goles que faltan = goles esperados × fracción restante (1er tiempo 44.8% de los goles), con ajuste por quién va ganando (TRAIL 1.15 / LEAD 0.92).
+
+| Dijo | Pasó | Casos |
+|---|---|---|
+| 82.4% | 81.9% | 9,987 |
+| 87.4% | 86.5% | 7,456 |
+| 92.6% | 93.0% | 7,608 |
+| 96.8% | 96.9% | 6,509 |
+
+Por grupo, todo dentro de ~2 puntos. Sin el ajuste por marcador, Resultado y Doble oportunidad salían 2–6 puntos confiados de más.
+Combinados quedan fuera en la página: en vivo repiten otra selección (doble exposición).
+Límite: solo se valida el minuto 45; otros minutos usan la misma curva. Rojas: −30% al que se queda con 10, +25% al rival (no validado, pocos casos en CSV).

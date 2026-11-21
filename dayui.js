@@ -126,6 +126,41 @@
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
   let SHOWN = [];
+  // ---- En vivo: selecciones de alta probabilidad con el marcador y el minuto (se actualiza cada minuto) ----
+  let LIVEM = [], LIVET = null;
+  function inplayHtml() {
+    const IP = window.RadarInPlay; if (!IP || !LIVEM.length) return '';
+    const bank = (() => { try { return +localStorage.getItem('radar.bank') || 0; } catch (e) { return 0; } })();
+    const rows = LIVEM.map(m => {
+      const min = IP.minuteOf(m.ev.detail, m.ev.state), score = `${m.ev.hs ?? '-'}-${m.ev.as ?? '-'}`;
+      const head = `<div class="ipd"><span>${matchTitle(m)} <span class="m">${esc(m.league)}</span></span><span><b class="num">${score}</b> <span class="m">${esc(m.ev.detail || 'en juego')}</span></span></div>`;
+      if (m.us || !m.res || min == null || m.ev.hs == null) return `<div class="ipm">${head}<p class="m">Sin modelo en vivo para este partido.</p></div>`;
+      if (min >= 88) return `<div class="ipm">${head}<p class="m">Últimos minutos: los momios ya casi no pagan y el retraso de ESPN pesa más.</p></div>`;
+      const c = m.ev.cards || {};
+      const nm = { home: Y.shortName(m.ev.homeName), away: Y.shortName(m.ev.awayName) };
+      const pr = IP.project({ lh: m.res.lh, la: m.res.la, hs: m.ev.hs, as: m.ev.as, minute: min, redH: c.redH || 0, redA: c.redA || 0, names: nm });
+      const picks = IP.safePicks(pr);
+      const red = (c.redH || c.redA) ? `<span class="st bad">roja ${c.redH ? nm.home : nm.away}</span> ` : '';
+      const mk = `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`;
+      const items = picks.map(x => {
+        const leg = { key: `${mk}:${x.id}`, matchKey: mk, t: m.ev.date, match: `${nm.home} vs ${nm.away}`, label: x.label, p: x.p, prov: +x.need.toFixed(2), provSrc: 'en vivo (justo)' };
+        return `<div class="ipr"><span><b>${esc(x.label)}</b> <span class="m">${esc(x.group)}</span></span><span class="num">${Math.round(x.p * 100)}%</span><span class="num m">pide ≥ ${(x.need).toFixed(2)}</span>${window.RadarSlipBtn ? window.RadarSlipBtn(leg) : ''}</div>`;
+      }).join('') || '<p class="m">Nada con 80%+ que todavía pague.</p>';
+      return `<div class="ipm">${head}${red ? `<p class="m">${red}ya va en el cálculo (−30% a quien se quedó con 10).</p>` : ''}${items}</div>`;
+    }).join('');
+    return `<div class="tk ip"><div class="ipd"><h3>En vivo · apuestas seguras</h3><span class="m">se actualiza cada minuto</span></div>${rows}
+      <p class="note">Solo vale si Draftea paga <b>más</b> que el "pide ≥". ESPN puede ir 1–2 min atrás: si acaba de pasar algo, espera.${bank ? ` Con tu saldo, máximo <b>$${Math.round(bank * 0.05)}</b> por apuesta (5%); el monto exacto te lo da la calculadora con el momio de Draftea.` : ' Escribe tu saldo en la calculadora para ver el monto máximo por apuesta.'}</p></div>`;
+  }
+  function paintInplay() { const b = $('inplay'); if (b) { b.innerHTML = inplayHtml(); if (window.RadarSlip) window.RadarSlip.refresh(); } }
+  async function tickInplay() {
+    if (!LIVEM.length || !$('inplay') || document.visibilityState !== 'visible' || !window.RadarLive) return;
+    try {
+      const evs = await window.RadarLive.fetchEvents(LIVEM.map(m => ({ matchKey: `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`, t: m.ev.date })));
+      for (const m of LIVEM) { const e = evs.get(`${m.lg}:${m.ev.homeId}:${m.ev.awayId}`); if (e) m.ev = { ...m.ev, hs: e.hs, as: e.as, detail: e.detail, state: e.state, completed: e.completed, cards: e.cards }; }
+      LIVEM = LIVEM.filter(m => !m.ev.completed);
+    } catch (e) { /* se queda con lo último */ }
+    paintInplay();
+  }
   let DMODE = 'normal';
   let LADMIN = 1.30, LADP = 0.40, LAST = null, LASTREQ = null;
   const DREAM = { stake: 5, target: 30000, days: 3, minP: 0.65, per: 2, extra: [] };
@@ -320,9 +355,7 @@
         ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}</div>`;
     }
     if (r.matches.length) html += '</div>';
-    if ((r.live || []).length) {
-      html += '<h3>En juego (fuera del ticket)</h3>' + [...r.live].sort(byTime).map(m => `<div class="dm" style="cursor:default"><span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)} · ${esc(m.ev.detail || 'en juego')}</span></span><span class="num">${m.ev.hs ?? '-'}-${m.ev.as ?? '-'}</span></div>`).join('');
-    }
+    if ((r.live || []).length) { LIVEM = [...r.live].sort(byTime); html += '<div id="inplay"></div>'; } else LIVEM = [];
     if ((r.played || []).length) {
       const rv = r.review;
       let ph = '', rdN = 0, rdOk = 0;
@@ -342,6 +375,7 @@
     html += '<p class="note">Toca un partido para ver el análisis completo. NBA y NFL usan la probabilidad de la casa sin margen.</p>';
     $('dout').innerHTML = html;
     LAST = r; renderLadder();
+    paintInplay(); clearInterval(LIVET); if (LIVEM.length) LIVET = setInterval(tickInplay, 60e3);
     const lm = $('ladmin'); if (lm) lm.addEventListener('change', () => { LADMIN = +lm.value; renderLadder(); });
     const lp = $('ladp'); if (lp) lp.addEventListener('change', () => { LADP = +lp.value; renderLadder(); });
     const dg = $('drgo'); if (dg) dg.addEventListener('click', () => buildDream());

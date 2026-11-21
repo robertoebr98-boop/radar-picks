@@ -239,7 +239,7 @@ t('córners y tarjetas entran al ticket solo como selección estimada de ligas v
 t('autovalidación de córners/tarjetas: tarjetas desde la lista de jugadas y veredicto por grupo', () => {
   const Dd = require('../data.js');
   const ev = Dd.parseEvent({ id: '1', date: '2026-11-01T02:00Z', competitions: [{ status: { type: { completed: true, state: 'post' } }, competitors: [{ homeAway: 'home', id: '10', team: { id: '10' }, score: '1', statistics: [] }, { homeAway: 'away', id: '20', team: { id: '20' }, score: '0', statistics: [] }], details: [{ yellowCard: true, team: { id: '10' } }, { yellowCard: true, team: { id: '20' } }, { redCard: true, team: { id: '20' } }, { scoringPlay: true, team: { id: '10' } }] }] });
-  assert.deepStrictEqual(ev.cards, { home: 1, away: 2 });
+  assert.deepStrictEqual(ev.cards, { home: 1, away: 2, redH: 0, redA: 1 });
   const P = require('../props.js');
   const r = P.evaluate([], 'mex.1');
   assert(r['Córners'].ok === false && r['Tarjetas'].matches === 0);
@@ -263,6 +263,19 @@ t('calibración por tipo y rango, y monto sugerido con topes', () => {
   assert.strictEqual(MO.suggestStake({ bank: 1000, p: 0.7, odd: 2.0 }).amount, 50); // tope 5%
   assert.strictEqual(MO.suggestStake({ bank: 1000, p: 0.6, odd: 2.0, overlap: true }).amount, 25);
   assert.strictEqual(MO.suggestStake({ bank: 915.26, p: 0.001, odd: 6000, kind: 'sonador' }).amount, 5);
+});
+t('en vivo: minuto, lo que falta del partido y selecciones seguras', () => {
+  const IP = require('../inplay.js');
+  assert.strictEqual(IP.minuteOf("67'"), 67); assert.strictEqual(IP.minuteOf("45'+2'"), 45); assert.strictEqual(IP.minuteOf('HT'), 45); assert.strictEqual(IP.minuteOf('FT'), null);
+  assert(IP.remaining(0) > 0.99 && Math.abs(IP.remaining(45) - 0.55) < 1e-9 && IP.remaining(80) < 0.2);
+  const pr = IP.project({ lh: 1.6, la: 1.0, hs: 2, as: 0, minute: 75, names: { home: 'A', away: 'B' } });
+  const by = id => pr.markets.find(x => x.id === id).p;
+  assert(by('1X') > 0.97 && by('O1.5') > 0.999 && by('U4.5') > 0.85);
+  const picks = IP.safePicks(pr);
+  assert(picks.length && picks.every(x => x.p >= 0.8 && x.p <= 0.985 && x.need >= 1.03));
+  const red = IP.project({ lh: 1.6, la: 1.0, hs: 0, as: 0, minute: 30, redH: 1 });
+  const nored = IP.project({ lh: 1.6, la: 1.0, hs: 0, as: 0, minute: 30 });
+  assert(red.rh < nored.rh && red.ra > nored.ra);
 });
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {

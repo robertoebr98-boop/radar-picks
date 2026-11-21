@@ -143,8 +143,8 @@
     const det = c.details;
     if (!Array.isArray(det) || !det.length) return null;
     const hid = String(home.id || home.team?.id), aid = String(away.id || away.team?.id);
-    const r = { home: 0, away: 0 };
-    for (const d of det) if (d && (d.yellowCard || d.redCard)) { const t = String(d.team?.id || ''); if (t === hid) r.home++; else if (t === aid) r.away++; }
+    const r = { home: 0, away: 0, redH: 0, redA: 0 };
+    for (const d of det) if (d && (d.yellowCard || d.redCard)) { const t = String(d.team?.id || ''); if (t === hid) { r.home++; if (d.redCard) r.redH++; } else if (t === aid) { r.away++; if (d.redCard) r.redA++; } }
     return r;
   }
 
