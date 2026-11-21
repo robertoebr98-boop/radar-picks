@@ -105,41 +105,15 @@
     return parts.length ? `<br><span class="mline">${parts.join(' ')}</span>` : '';
   }
 
-  // Tu opinión por partido, al lado del modelo (no cambia sus números).
-  const OP = () => window.RadarOpinion;
-  const opKey = m => `${m.lg}:${m.ev.homeId}:${m.ev.awayId}:${String(m.ev.date || '').slice(0, 10)}`;
+  // Lectura automática del partido (posible ganador y por qué).
   const pOf = (m, id) => { const x = m.res && m.res.markets.find(k => k.id === id); return x ? x.p : null; };
-  function opTag(m) {
-    const r = OP() && OP().get(opKey(m));
-    if (!r) return '';
-    const a = OP().agreement(r.pModel);
-    return a ? `<span class="st ${a.tag}">modelo ${pct(r.pModel)} · ${a.text}</span>` : '';
+  function readingOf(m) {
+    const RR = window.RadarReading;
+    if (!RR || !m.res || m.us) return null;
+    return RR.text({ h: Y.shortName(m.ev.homeName), a: Y.shortName(m.ev.awayName), p1: pOf(m, '1'), px: pOf(m, 'X'), p2: pOf(m, '2'),
+      lh: m.res.lh, la: m.res.la, formH: Y.formArr(m.ev.homeForm), formA: Y.formArr(m.ev.awayForm), motH: m.motH, motA: m.motA, h2h: m.h2hS });
   }
-  function opSelect(m, idx) {
-    if (!OP() || !m.res || m.us) return '';
-    const r = OP().get(opKey(m)), h = Y.shortName(m.ev.homeName), v = Y.shortName(m.ev.awayName);
-    const opts = OP().PICKS.map(p => `<option value="${p.id}" ${r && r.pick === p.id ? 'selected' : ''}>${esc(p.label(h, v))}</option>`).join('');
-    return `<div class="opw"><label>Tu opinión <select class="in sm" data-op="${idx}"><option value="">—</option>${opts}</select></label><span id="opt${idx}">${opTag(m)}</span></div>`;
-  }
-  function opPlayed(m) {
-    if (!OP()) return '';
-    const r = OP().resolve(opKey(m), m.ev.hs, m.ev.as);
-    if (!r || r.hit == null) return '';
-    const lab = (OP().PICKS.find(p => p.id === r.pick) || { label: () => r.pick }).label(Y.shortName(m.ev.homeName), Y.shortName(m.ev.awayName));
-    return ` <span class="st ${r.hit ? 'ok' : 'bad'}">tu opinión ${r.hit ? '✓' : '✗'} ${esc(lab)}</span>`;
-  }
-  function opSummary() {
-    const s = OP() && OP().stats();
-    if (!s || (!s.n && !s.pending)) return '';
-    if (!s.n) return `<p class="note">Tienes ${s.pending} opinión(es) esperando resultado. Cuando terminen los partidos verás aquí si tu intuición le gana al modelo.</p>`;
-    const verdict = s.n < 30 ? `Con ${s.n} opiniones aún es muy pronto para concluir; hacen falta unas 30.`
-      : s.hits > s.expected + 2 ? 'Tu intuición acierta más de lo que el modelo esperaba: vale la pena tomarla en cuenta.'
-      : s.hits < s.expected - 2 ? 'Tu intuición acierta menos de lo que el modelo esperaba: confía más en el modelo.'
-      : 'Tu intuición acierta lo mismo que el modelo esperaba: no le agrega ni le quita.';
-    return `<div class="tk"><h3>Tu opinión vs el modelo</h3>
-      <div class="sum"><span>Acertaste <b class="num">${s.hits} de ${s.n}</b></span><span>El modelo esperaba <b class="num">${s.expected.toFixed(1)}</b></span></div>
-      <p class="note">Cuando el modelo coincidía (≥60%): ${s.agree.hits} de ${s.agree.n}. Cuando no coincidía (&lt;40%): ${s.disagree.hits} de ${s.disagree.n}. ${verdict}${s.pending ? ` Pendientes: ${s.pending}.` : ''}</p></div>`;
-  }
+  const fold = (title, body, cls = '') => `<details class="tk fold ${cls}"><summary>${title}</summary>${body}</details>`;
 
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
@@ -275,34 +249,35 @@
         <span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'pide ≥ ' + f2(x.leg.minNeeded)}</span></span>${btn(x)}</div>`).join('');
       html += `<button class="btn ghost sm" id="addall">Pasar el ticket sugerido a la calculadora</button>`;
       html += `<div class="sum"><span>Prob. de acertar todo: <b class="num">${pct(t.p)}</b></span><span>Momio total aprox.: <b class="num">${f2(t.odd)}</b></span></div>
-        <p class="note">Una selección por partido. Solo selecciones con prob ≥ ${Math.round(R.MIN_P * 100)}% y momio ≥ 1.30, sin volados, máximo ${R.MAX_LEGS}. "Pide ≥" es el momio mínimo que debe darte Draftea o Novibet; si da menos, quita esa selección.</p>`;
+        <p class="note">Prob ≥ ${Math.round(R.MIN_P * 100)}%, momio ≥ 1.30, sin volados. "Pide ≥": si Draftea da menos, quítala.</p>`;
     } else html += '<p class="note">Ningún partido de este día pasa los filtros. Mejor no apostar.</p>';
     html += '</div>';
 
     // Parlay soñador: entrada chica, premio grande, con la probabilidad real a la vista.
-    html += `<div class="tk dream"><h3>Parlay soñador</h3>
+    html += fold('Parlay soñador <span class="m">entrada chica, premio grande</span>', `
       <div class="opth">
         <label class="m">Entrada $<input class="in sm" id="drstake" type="number" min="1" step="1" value="${DREAM.stake}" style="width:70px"></label>
         <label class="m">Premio objetivo $<input class="in sm" id="drtarget" type="number" min="100" step="1000" value="${DREAM.target}" style="width:100px"></label>
         <label class="m">Partidos de <select class="in sm" id="drdays">${[1, 2, 3].map(d => `<option value="${d}" ${d === DREAM.days ? 'selected' : ''}>${d === 1 ? 'este día' : d + ' días'}</option>`).join('')}</select></label>
         <button class="btn sm" id="drgo">Armar</button></div>
-      <div id="dream"></div></div>`;
+      <div id="dream"></div>`, 'dream');
     // Mejor momio para tu riesgo: ranking de combinaciones con prob. total mínima.
-    html += `<div class="tk"><h3>Mejor momio para tu riesgo</h3>
+    html += fold('Mejor momio para tu riesgo <span class="m">combinaciones con prob. mínima</span>', `
       <div class="opth"><label class="m">Prob. total mínima <select class="in sm" id="ladp">${[0.30, 0.40, 0.50, 0.60].map(x => `<option value="${x}" ${x === LADP ? 'selected' : ''}>${Math.round(x * 100)}%</option>`).join('')}</select></label>
       <label class="m">Momio mínimo por selección <select class="in sm" id="ladmin">${[1.30, 1.25, 1.20, 1.15].map(x => `<option value="${x}" ${x === LADMIN ? 'selected' : ''}>${x.toFixed(2)}${x === 1.30 ? ' (tu regla)' : ''}</option>`).join('')}</select></label></div>
       <div id="ladder"></div>
-      <p class="note">Busca entre todos los mercados de los partidos por empezar (una selección por partido) la combinación que paga más sin bajar de la probabilidad total que elegiste. <b>Ojo:</b> con momios estimados, para el mismo riesgo <b>menos selecciones pagan más</b>, porque cada selección extra suma el margen de la casa (~6%). Más selecciones solo convienen si sus momios reales de Draftea pagan más de lo justo.</p></div>`;
+      <p class="note">Una selección por partido. Con momios estimados, para el mismo riesgo <b>menos selecciones pagan más</b> (cada una suma ~6% de margen de la casa).</p>`);
     if (r.value.length) {
-      html += '<h3>Picks con valor (momio de referencia ESPN)</h3>' + [...r.value].sort((a, b) => byTime(a.match, b.match)).map(x => `<div class="leg"><span>${hr(x.match.ev.date)} <b>${esc(x.leg.label)}</b><br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)}</span></span>
-        <span style="text-align:right"><b class="num">${f2(x.leg.odd)}</b><br><span class="m">prob ${pct(x.leg.p)} · valor ${f2(x.leg.ev)}</span></span>${btn(x)}</div>`).join('');
+      html += fold(`Picks con valor <span class="m">${r.value.length} con momio ESPN</span>`, [...r.value].sort((a, b) => byTime(a.match, b.match)).map(x => `<div class="leg"><span>${hr(x.match.ev.date)} <b>${esc(x.leg.label)}</b><br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)}</span></span>
+        <span style="text-align:right"><b class="num">${f2(x.leg.odd)}</b><br><span class="m">prob ${pct(x.leg.p)} · valor ${f2(x.leg.ev)}</span></span>${btn(x)}</div>`).join(''));
     }
 
     if (r.matches.length) html += '<h3>Por empezar · por hora de México</h3>';
     for (const m of [...r.matches].sort(byTime)) {
       const w = m.winner;
       const right = w ? `<b class="num">${pct(w.p)}</b>` : '<span class="m">sin datos</span>';
-      const sub = w
+      const rd = readingOf(m);
+      const sub = rd ? `<span class="rdl ${rd.tag}">${esc(rd.lines[0])}</span>${rd.lines[1] ? `<br><span class="m">${esc(rd.lines[1])}</span>` : ''}` : w
         ? `${esc(w.label)}${m.safe && m.safe.id !== w.id ? ` · seguro: ${esc(m.safe.label)} ${pct(m.safe.p)}` : ''}${m.res ? ` · goles esperados ${f2(m.res.lh)}–${f2(m.res.la)}` : ''}${m.cons ? ` · consenso ${m.cons.books} casas` : m.hasMarket ? '' : ' · sin momios'}`
         : (m.us ? 'ESPN aún no publica momios' : 'equipo sin partidos en la tabla');
       const clickable = !m.us && !m.noData;
@@ -310,24 +285,28 @@
       registerMatch(m);
       html += `<div class="dmw"><button class="dm" ${clickable ? `data-lg="${m.lg}" data-h="${m.ev.homeId}" data-a="${m.ev.awayId}"` : 'disabled'}>
         <span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br><span class="m">${sub}</span>${motLine(m)}</span><span style="text-align:right">${right}</span></button>
-        ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}${opSelect(m, idx)}</div>`;
+        ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}</div>`;
     }
     if ((r.live || []).length) {
       html += '<h3>En juego (fuera del ticket)</h3>' + [...r.live].sort(byTime).map(m => `<div class="dm" style="cursor:default"><span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)} · ${esc(m.ev.detail || 'en juego')}</span></span><span class="num">${m.ev.hs ?? '-'}-${m.ev.as ?? '-'}</span></div>`).join('');
     }
     if ((r.played || []).length) {
       const rv = r.review;
-      html += `<h3>Ya jugados hoy${rv && rv.n ? ` · el modelo acertó ${rv.hits} de ${rv.n} selecciones` : ''}</h3>`;
-      html += [...r.played].sort(byTime).map(m => {
+      let ph = '', rdN = 0, rdOk = 0;
+      ph += [...r.played].sort(byTime).map(m => {
         const L = m.reviewLeg;
+        const rd = readingOf(m), rh = rd && window.RadarReading.hit(rd, m.ev.hs, m.ev.as);
+        if (rh != null) { rdN++; if (rh) rdOk++; }
+        const rdTag = rh == null ? '' : ` <span class="st ${rh ? 'ok' : 'bad'}">lectura ${rh ? '✓' : '✗'} ${rd.winner === 'x' ? 'parejo' : esc(Y.shortName(rd.winner === 'h' ? m.ev.homeName : m.ev.awayName))}</span>`;
         const tag = L ? `<span class="st ${L.hit ? 'ok' : 'bad'}">${L.hit ? '✓' : '✗'} ${esc(L.label)} ${pct(L.p)}</span>` : '<span class="m">sin selección sugerida</span>';
-        return `<div class="dm" style="cursor:default"><span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br>${tag}${opPlayed(m)}</span><b class="num">${esc(m.result || '-')}</b></div>`;
+        return `<div class="dm" style="cursor:default"><span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br>${tag}${rdTag}</span><b class="num">${esc(m.result || '-')}</b></div>`;
       }).join('');
-      if (rv && rv.surprises.length) html += `<p class="note">Sorpresas: ${rv.surprises.map(x => `${esc(x.label)} (${pct(x.p)}) no ganó`).join(' · ')}.</p>`;
-      html += '<p class="note">La revisión usa la tabla de hoy, que ya incluye estos resultados; es una guía, no una medición exacta.</p>';
+      if (rv && rv.surprises.length) ph += `<p class="note">Sorpresas: ${rv.surprises.map(x => `${esc(x.label)} (${pct(x.p)}) no ganó`).join(' · ')}.</p>`;
+      ph += '<p class="note">Usa la tabla de hoy, que ya incluye estos resultados: es guía, no medición exacta. "Parejo" acierta si nadie gana por 2 o más.</p>';
+      const sumTxt = [rv && rv.n ? `selecciones ${rv.hits}/${rv.n}` : '', rdN ? `lectura ${rdOk}/${rdN}` : ''].filter(Boolean).join(' · ');
+      html += fold(`Ya jugados hoy <span class="m">${sumTxt}</span>`, ph);
     }
-    html += opSummary();
-    html += '<p class="note">Toca un partido de fútbol para ver el análisis completo y capturar tus momios. NBA y NFL usan la probabilidad de la casa sin margen (sin modelo propio todavía). El pronóstico del día usa tabla + forma + momios; el análisis completo además usa local/visita y bajas.</p>';
+    html += '<p class="note">Toca un partido para ver el análisis completo. NBA y NFL usan la probabilidad de la casa sin margen.</p>';
     $('dout').innerHTML = html;
     LAST = r; renderLadder();
     const lm = $('ladmin'); if (lm) lm.addEventListener('change', () => { LADMIN = +lm.value; renderLadder(); });
@@ -339,11 +318,6 @@
       $('slip').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     if (window.RadarSlip) window.RadarSlip.refresh();
-    $('dout').querySelectorAll('select[data-op]').forEach(sel => sel.addEventListener('change', () => {
-      const m = SHOWN[+sel.dataset.op], k = opKey(m);
-      OP().set(k, sel.value ? { pick: sel.value, pModel: pOf(m, sel.value), match: `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`, date: m.ev.date } : null);
-      $('opt' + sel.dataset.op).innerHTML = opTag(m);
-    }));
     $('dout').querySelectorAll('[data-mk]').forEach(b => b.addEventListener('click', () => openMarkets(+b.dataset.mk, b)));
     $('dout').querySelectorAll('.dm[data-lg]').forEach(b => b.addEventListener('click', () => window.RadarApp.openMatch(b.dataset.lg, b.dataset.h, b.dataset.a)));
   }

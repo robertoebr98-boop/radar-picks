@@ -142,7 +142,7 @@
       S.odds = MEMO[S.key] || {};
       S.out = MEMO[S.key + '.out'] || {};
       S.bajas = MEMO[S.key + '.bajas'] || { home: 0, away: 0 };
-      S.mood = MEMO[S.key + '.mood'] || { home: 0, away: 0 };
+      S.mood = { home: 0, away: 0 };
       if (!Object.keys(S.odds).length) applyEspnOdds(false);
       $('searchmsg').innerHTML = '';
       $('result').classList.remove('hidden');
@@ -249,9 +249,13 @@
     $('mkt').innerHTML = res.market
       ? `<span>${c.cons ? `Consenso de ${c.cons.books} casas` : 'Casa sin margen'}: ${pct(res.market.probs[0])} · ${pct(res.market.probs[1])} · ${pct(res.market.probs[2])}</span><span>${c.cons ? 'sin margen' : `Margen ${(res.market.margin * 100).toFixed(1)}%`}</span>`
       : '<span>Solo modelo: captura momios de resultado para mezclar con la casa.</span>';
-    $('meta').innerHTML = `<div class="resline">Resultado probable: <b>${resTxt}</b></div><div class="resline">Marcador estimado: <b class="num">${rh} - ${ra}</b> · ${pct(rp)} <span class="m">(redondeo de los goles esperados)</span></div>` + '<span class="m">Marcadores exactos más probables:</span> ' + res.topScores.slice(0, 4).map(s => `<span class="pill num">${s.h}-${s.a} ${pct(s.p)}</span>`).join('') + '<span class="m">(un marcador exacto casi nunca pasa de 15–20%; por eso arriba salen seguido 1-1, 1-0 o 0-0)</span>';
+    $('meta').innerHTML = `<div class="resline">Resultado probable: <b>${resTxt}</b></div><div class="resline">Marcador estimado: <b class="num">${rh} - ${ra}</b> · ${pct(rp)}</div>` + '<span class="m" title="Un marcador exacto casi nunca pasa de 15–20%">Más probables:</span> ' + res.topScores.slice(0, 4).map(s => `<span class="pill num">${s.h}-${s.a} ${pct(s.p)}</span>`).join('') ;
     $('motive').innerHTML = [[c.home, c.motH, 'h'], [c.away, c.motA, 'a']].map(([t, m, k]) => m ? `<div class="mot ${k}"><span class="mtag ${m.tag}">${esc(m.label)}</span> <b>${esc(t.short || t.name)}</b> <span>${esc(m.detail)}</span></div>` : '').join('');
 
+    const brkOf = adj => adj && ((adj.goals && adj.goals.brk) || adj.brk || (adj.sot && adj.sot.brk)) || null;
+    const rd = window.RadarReading && window.RadarReading.text({ h: hn, a: an, p1, px, p2, lh: res.lh, la: res.la,
+      formH: l5h.map(x => x.result), formA: l5a.map(x => x.result), motH: c.motH, motA: c.motA, h2h: c.h2hS, brkH: brkOf(c.adjH), brkA: brkOf(c.adjA) });
+    $('read').innerHTML = rd ? `<div class="rdh">Lectura del partido</div>${rd.lines.map((l, i) => `<p${i === 0 ? ` class="rd0 ${rd.tag}"` : ''}>${esc(l)}</p>`).join('')}` : '';
     renderMarkets(res);
     renderVerdict(res, inp);
     renderForm(l5h, l5a);
@@ -345,7 +349,6 @@
       if (m.tag === 'sin-nada') notes.push(`${t.short || t.name} no se juega nada`);
       if (m.tag === 'presion') notes.push(`${t.short || t.name} ${m.detail.split(' · ')[1] || 'se juega algo'}: el modelo le sube 8% el ataque`);
     }
-    for (const [side, t] of [['home', c.home], ['away', c.away]]) if (S.mood[side]) notes.push(`tu opinión: ${t.short || t.name} ${S.mood[side] > 0 ? 'en racha (+8% ataque)' : 'en crisis (−8% ataque)'}; no está validado con datos`);
     notes.push('selecciones del mismo partido están correlacionadas: combina con otro partido');
     $('vnote').textContent = notes.join(' · ') + '.';
   }
@@ -412,19 +415,12 @@
       return `<div class="fcol"><div class="ftitle ${side === 'home' ? 'h' : 'a'}">${esc(team.short || team.name)}</div>
         ${items || '<p class="note">ESPN no trae líderes de este partido todavía.</p>'}
         <div class="bj"><span>% ataque perdido por otras bajas</span><input class="odd" inputmode="numeric" data-side="${side}" value="${S.bajas[side] || ''}" placeholder="0"></div>
-        ${brkNote(side === 'home' ? c.adjH : c.adjA)}
-        <div class="bj"><span>Momento (tu opinión)</span><select class="in sm" data-mood="${side}" aria-label="Momento de ${esc(team.short || team.name)}">
-          <option value="0" ${!S.mood[side] ? 'selected' : ''}>Normal</option>
-          <option value="1" ${S.mood[side] === 1 ? 'selected' : ''}>En racha (+8% ataque)</option>
-          <option value="-1" ${S.mood[side] === -1 ? 'selected' : ''}>En crisis (−8% ataque)</option></select></div></div>`;
+        ${brkNote(side === 'home' ? c.adjH : c.adjA)}</div>`;
     };
     $('players').innerHTML = col('home', c.home) + col('away', c.away);
     $('players').querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', () => {
       if (cb.checked) S.out[cb.dataset.k] = 1; else delete S.out[cb.dataset.k];
       MEMO[S.key + '.out'] = S.out; setTimeout(render);
-    }));
-    $('players').querySelectorAll('select[data-mood]').forEach(sel => sel.addEventListener('change', () => {
-      S.mood[sel.dataset.mood] = +sel.value; MEMO[S.key + '.mood'] = S.mood; setTimeout(render);
     }));
     $('players').querySelectorAll('input[data-side]').forEach(inp => inp.addEventListener('change', () => {
       const n = Math.max(0, Math.min(40, parseFloat(inp.value) || 0));
@@ -437,7 +433,7 @@
     const b = adj && ((adj.goals && adj.goals.brk) || adj.brk || (adj.sot && adj.sot.brk));
     if (!b) return '';
     const up = b.diff > 0;
-    return `<p class="note"><span class="st ${up ? 'ok' : 'bad'}">${up ? 'Mejoró' : 'Empeoró'}</span> en sus últimos ${b.n} partidos: ${up ? '+' : ''}${b.diff.toFixed(1)} goles netos por partido frente a lo que se esperaba antes. El modelo ya da más peso a lo reciente; si crees que es un cambio real (alineación, técnico, refuerzo), márcalo abajo.</p>`;
+    return `<p class="note"><span class="st ${up ? 'ok' : 'bad'}">${up ? 'Mejoró' : 'Empeoró'}</span> en sus últimos ${b.n} partidos: ${up ? '+' : ''}${b.diff.toFixed(1)} goles netos por partido frente a lo que se esperaba antes. El modelo ya da más peso a lo reciente.</p>`;
   }
 
   function renderCalc(inp, res) {

@@ -199,6 +199,14 @@ t('parlay soñador: llega al momio objetivo con la combinación más probable', 
   assert(Math.abs(r.p - r.legs.reduce((a, x) => a * x.leg.p, 1)) < 1e-12);
   assert.strictEqual(Y.dreamParlay(ms.slice(0, 1), 1e6), null);
 });
+t('lectura del partido: favorito claro, parejo y acierto', () => {
+  const RR = require('../reading.js');
+  const a = RR.text({ h: 'Tigres', a: 'Atlas', p1: 0.62, px: 0.22, p2: 0.16, lh: 1.9, la: 0.8, formH: ['W', 'W', 'W', 'D', 'L'], formA: ['L', 'L', 'D', 'L', 'W'], h2h: { n: 4, w: 3, d: 1, l: 0 } });
+  assert(a.winner === 'h' && a.tag === 'ok' && /Tigres/.test(a.lines[0]) && /respalda/.test(a.lines[1]), JSON.stringify(a));
+  const b = RR.text({ h: 'A', a: 'B', p1: 0.36, px: 0.30, p2: 0.34, lh: 1.2, la: 1.1 });
+  assert(b.winner === 'x' && /parejo/.test(b.lines[0]), JSON.stringify(b));
+  assert(RR.hit(a, 2, 0) === true && RR.hit(a, 1, 1) === false && RR.hit(b, 1, 0) === true && RR.hit(b, 3, 1) === false);
+});
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
   OP._useMemory({});

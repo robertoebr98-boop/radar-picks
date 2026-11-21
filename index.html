@@ -34,7 +34,7 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:radial-gradient(1200px 600px at 50% -200px,var(--bg2),var(--bg)) fixed,var(--bg);min-height:100vh;color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45}
-.wrap{max-width:600px;margin:0 auto;padding-block:18px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.wrap{max-width:600px;margin:0 auto;padding-block:18px 96px;row-gap:18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -209,6 +209,28 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
 .sgp .m{color:var(--muted);font-size:12px;margin:0}
 .sgp .addb{transform:scale(.85)}
 .tk.dream{border-color:var(--warn)}
+details.fold{border:1px solid var(--line);background:none;padding:0;gap:0;border-radius:12px}
+details.fold>summary{padding:12px;font-size:13px;list-style:none;display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::after{content:'▾';color:var(--muted)}
+details.fold[open]>summary::after{content:'▴'}
+details.fold>summary .m{font-weight:400;font-size:11.5px;color:var(--muted);margin-right:auto}
+details.fold[open]{padding:0 12px 12px}
+details.fold[open]>summary{padding:12px 0}
+details.fold>*:not(summary){margin-top:6px}
+details.dream[open],details.dream{border-color:var(--warn)}
+.read{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.06);font-size:12.5px;line-height:1.45}
+.read p{margin:0;color:var(--board-muted)}
+.read .rdh{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--board-muted);font-weight:600}
+.read .rd0{color:var(--board-fg);font-weight:600}
+.rdl{color:var(--fg);font-weight:600}
+section.card>details.sec{border-top:0;padding-top:0}
+section.card>details.sec>summary{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:.02em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:baseline;gap:8px;list-style:none}
+section.card>details.sec>summary::-webkit-details-marker{display:none}
+section.card>details.sec>summary small{font-family:var(--f-body);font-size:11.5px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)}
+section.card>details.sec>summary::after{content:'▾';font-size:14px;color:var(--muted)}
+section.card>details.sec[open]>summary::after{content:'▴'}
+section.card>details.sec[open]{display:flex;flex-direction:column;gap:12px}
 .dlegs{display:flex;flex-direction:column;gap:6px}
 .warnbox{background:var(--warn-soft);color:var(--warn);padding:8px 10px;border-radius:10px;font-size:12px}
 .money{display:inline-flex;align-items:center;gap:4px;font-weight:600}
@@ -253,7 +275,7 @@ td.addc{width:34px;padding-left:6px}
     <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--on-accent)" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="var(--on-accent)"/></svg>
     Radar de picks
   </h1>
-    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-j</span>
+    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-k</span>
       <button class="btn sm" id="refresh">Actualizar</button>
       <button class="icon" id="theme" aria-label="Cambiar tema claro u oscuro">☀︎</button></div>
   </div>
@@ -301,6 +323,7 @@ td.addc{width:34px;padding-left:6px}
         <div><img id="al" alt="" onerror="this.classList.add('hidden')"><div class="tname a" id="an"></div><div class="tsub" id="as"></div></div>
       </div>
       <div class="bar3" id="bar3" aria-label="Probabilidad 1X2"></div>
+      <div class="read" id="read"></div>
       <div class="mkt" id="mkt"></div>
       <div class="meta" id="meta"></div>
       <div class="motive" id="motive"></div>
@@ -314,17 +337,17 @@ td.addc{width:34px;padding-left:6px}
 
     <section class="card" aria-label="Mercados">
       <h2>Mercados <small id="oddsrc"></small></h2>
-      <p class="note">Escribe el momio decimal de Draftea o Novibet en cada mercado (ej. 1.45). Resultado y goles 2.5 también ajustan el modelo con la casa sin margen.</p>
+      <p class="note">Escribe el momio de Draftea o Novibet (ej. 1.45).</p>
       <div class="row">
         <button class="btn ghost" id="clearodds">Borrar momios</button>
         <button class="btn ghost" id="espnodds">Usar momios de ESPN</button>
       </div>
       <div class="tw"><table id="mkts"></table></div>
-      <p class="note">La barra es la probabilidad final; la marca, lo que pide el momio para no perder. "Peor" = probabilidad si los goles esperados se mueven ±15%.</p>
+      <p class="note" title="Resultado y goles 2.5 también ajustan el modelo con la casa sin margen.">Barra = probabilidad; marca = lo que pide el momio para no perder. "Peor" = si los goles esperados se mueven ±15%.</p>
     </section>
 
     <section class="card" aria-label="Forma">
-      <h2>Forma <small>últimos 5, reciente primero</small></h2>
+      <details class="sec"><summary>Forma y entre ellos <small>últimos 5</small></summary>
       <div class="form" id="form"></div>
       <hr>
       <div class="stats" id="stats"></div>
@@ -332,16 +355,18 @@ td.addc{width:34px;padding-left:6px}
       <h3>Entre ellos</h3>
       <div class="stats" style="grid-template-columns:1fr auto" id="h2h"></div>
       <p class="note" id="h2hnote"></p>
+      </details>
     </section>
 
     <section class="card" aria-label="Bajas y jugadores">
-      <h2>Bajas y jugadores <small>marca quién no juega</small></h2>
+      <details class="sec"><summary>Bajas <small>quién no juega</small></summary>
       <div class="pgrid" id="players"></div>
       <p class="note">ESPN no publica lesiones de fútbol. Marca a los que no juegan (revisa la alineación en Draftea o en redes del club) o escribe el % de ataque que pierde el equipo. El modelo se recalcula solo.</p>
+      </details>
     </section>
 
     <section class="card" aria-label="Método">
-      <h2>Cómo calcula</h2>
+      <details class="sec"><summary>Cómo calcula</summary>
       <ol class="ev">
         <li><b>Fuerza ajustada por rival, con remates a puerta.</b> 25% tabla y 75% partido por partido: cada resultado se ajusta por la calidad del rival, los recientes pesan más y los remates a puerta (de ESPN) pesan 80% porque predicen mejor que los goles. Probado con 7,994 partidos: cuando dice 70–80%, pasa 74.6% de las veces.</li>
         <li><b>Forma.</b> Ya va dentro del peso a partidos recientes; sumarla aparte empeoraba el backtest.</li>
@@ -352,6 +377,7 @@ td.addc{width:34px;padding-left:6px}
       <details>
         <summary>Números del cálculo</summary>
         <div class="calc" id="calc"></div>
+      </details>
       </details>
     </section>
   </div>
@@ -382,16 +408,16 @@ td.addc{width:34px;padding-left:6px}
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
 </div>
 <button class="slipbar hidden" id="slipbar" aria-label="Ver ticket"></button>
-<script src="model.js?v=20261121j"></script>
-<script src="context.js?v=20261121j"></script>
-<script src="data.js?v=20261121j"></script>
-<script src="app.js?v=20261121j"></script>
-<script src="day.js?v=20261121j"></script>
-<script src="props.js?v=20261121j"></script>
-<script src="dayui.js?v=20261121j"></script>
-<script src="optimize.js?v=20261121j"></script>
-<script src="opinion.js?v=20261121j"></script>
-<script src="slip.js?v=20261121j"></script>
-<script src="saved.js?v=20261121j"></script>
+<script src="model.js?v=20261121k"></script>
+<script src="context.js?v=20261121k"></script>
+<script src="data.js?v=20261121k"></script>
+<script src="app.js?v=20261121k"></script>
+<script src="day.js?v=20261121k"></script>
+<script src="props.js?v=20261121k"></script>
+<script src="reading.js?v=20261121k"></script>
+<script src="dayui.js?v=20261121k"></script>
+<script src="optimize.js?v=20261121k"></script>
+<script src="slip.js?v=20261121k"></script>
+<script src="saved.js?v=20261121k"></script>
 </body>
 </html>
