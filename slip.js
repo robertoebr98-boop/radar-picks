@@ -235,21 +235,36 @@
     const stake = Math.max(0, +S.stake || 0);
     const a = O.summary(S.legs, stake), b = O.summary(OPT.after, stake);
     const sign = x => (x >= 0 ? '+' : '') + money(x);
-    const ch = OPT.changes.map(c => c.type === 'swap'
-      ? `<li><b>Cambiar</b> ${esc(c.from.label)} → <b>${esc(c.to.label)}</b> <span class="m">(${esc(c.from.match)} · ${esc(c.why)})</span></li>`
-      : c.type === 'note' ? `<li><b>Se queda</b> ${esc(c.from.label)} <span class="m">(${esc(c.from.match)} · ${esc(c.why)})</span></li>`
-      : c.type === 'remove' ? `<li><b>Quitar</b> ${esc(c.from.label)} <span class="m">(${esc(c.from.match)} · ${esc(c.why)})</span></li>`
-      : `<li><b>Agregar</b> ${esc(c.to.label)} <span class="m">(${esc(c.to.match)} · ${esc(c.why)})</span></li>`).join('');
-    return head + `<ul class="optl">${ch}</ul>${why}
-      <div class="sgrid">
-        <span></span><span class="hd">Antes</span><span class="hd">Después</span>
-        <span>Selecciones</span><b class="num">${a.n}</b><b class="num">${b.n}</b>
-        <span>Prob. de acertar todo</span><b class="num">${pct(a.p)}</b><b class="num">${pct(b.p)}</b>
-        <span>Momio total</span><b class="num">${a.odd.toFixed(2)}</b><b class="num">${b.odd.toFixed(2)}</b>
-        <span>Valor esperado</span><b class="num ${a.ev >= 0 ? 'good' : 'bad'}">${sign(a.ev)}</b><b class="num ${b.ev >= 0 ? 'good' : 'bad'}">${sign(b.ev)}</b>
-        <span>Con momio real</span><b class="num">${a.real} de ${a.n}</b><b class="num">${b.real} de ${b.n}</b>
+    // Menú tipo RPG: cada cambio como "sale / entra" y las estadísticas actual → propuesta con flechas.
+    const lg = l => `${esc(l.label)} <span class="m">${esc(l.match)} · ${pct(l.p)}${O.oddOf(l) ? ' · ' + O.oddOf(l).toFixed(2) : ''}</span>`;
+    const ch = OPT.changes.map(c => {
+      const out = c.from && c.type !== 'note' ? `<div class="ox out"><span class="oxk">sale</span><span>${lg(c.from)}</span></div>` : '';
+      const inn = c.to ? `<div class="ox in"><span class="oxk">entra</span><span>${lg(c.to)}</span></div>` : '';
+      const keep = c.type === 'note' ? `<div class="ox keep"><span class="oxk">se queda</span><span>${lg(c.from)}</span></div>` : '';
+      return `<div class="oc">${out}${inn}${keep}<div class="m">${esc(c.why)}</div></div>`;
+    }).join('');
+    const row = (name, va, vb, fa, better) => {
+      const d = vb - va, eq = Math.abs(d) < 1e-9;
+      const good = better === 0 ? null : (d > 0) === (better > 0);
+      const cls = eq || good === null ? 'eq' : good ? 'up' : 'down';
+      const arrow = eq ? '=' : d > 0 ? '▲' : '▼';
+      return `<span>${name}</span><b class="num">${fa(va)}</b><b class="num ${cls}">${fa(vb)} <i>${arrow}</i></b>`;
+    };
+    const verdict = b.ev > a.ev + 0.005 && b.p >= a.p - 0.02 ? ['up', 'Mejor: sube el valor sin perder probabilidad']
+      : b.ev > a.ev + 0.005 ? ['lean', 'Más valor, pero baja la probabilidad de acertar']
+      : b.ev < a.ev - 0.005 ? ['down', 'Empeora el valor esperado: mejor mantener']
+      : ['eq', 'Casi igual'];
+    return head + `<div class="rpg">
+      <div class="oclist">${ch}</div>${why}
+      <div class="rpgs"><span></span><span class="hd">Actual</span><span class="hd">Propuesta</span>
+        ${row('Selecciones', a.n, b.n, x => String(x), 0)}
+        ${row('Prob. de acertar', a.p, b.p, pct, 1)}
+        ${row('Momio total', a.odd, b.odd, x => x.toFixed(2), 1)}
+        ${row('Valor esperado', a.ev, b.ev, sign, 1)}
+        ${row('Con momio real', a.real, b.real, x => `${x}`, 1)}
       </div>
-      <div class="opth"><button class="btn sm" id="optok">Aplicar cambios</button><button class="btn ghost sm" id="optno">Descartar</button></div></div>`;
+      <div class="rpgv ${verdict[0]}">${verdict[1]}</div>
+      <div class="rpgb"><button class="btn" id="optok">Aplicar cambio</button><button class="btn ghost" id="optno">Mantener configuración actual</button></div></div></div>`;
   }
 
   function init() {

@@ -256,6 +256,27 @@ section.card>details.sec[open]{display:flex;flex-direction:column;gap:12px}
 .leg{grid-template-columns:1fr auto auto !important}
 td.addc{width:34px;padding-left:6px}
 .strat{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;font-size:12.5px;padding:10px 12px;border-radius:10px;background:var(--sub);border:1px solid var(--line)}
+.rpg{display:flex;flex-direction:column;gap:10px}
+.oclist{display:flex;flex-direction:column;gap:6px}
+.oc{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border-radius:10px;background:var(--sub);border:1px solid var(--line);font-size:12.5px}
+.oc>.m{font-size:11px;color:var(--muted)}
+.ox{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:baseline}
+.ox .m{font-size:11px;color:var(--muted)}
+.oxk{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:center;border-radius:6px;padding:2px 0}
+.ox.out .oxk{color:var(--bad);background:color-mix(in srgb,var(--bad) 15%,transparent)}
+.ox.in .oxk{color:var(--good);background:color-mix(in srgb,var(--good) 15%,transparent)}
+.ox.keep .oxk{color:var(--muted);background:var(--line)}
+.rpgs{display:grid;grid-template-columns:1fr auto auto;gap:6px 16px;padding:12px;border-radius:12px;border:1px solid var(--line2);font-size:13px;align-items:baseline}
+.rpgs .hd{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:right}
+.rpgs b{text-align:right}
+.rpgs i{font-style:normal;font-size:10px}
+.rpgs .up{color:var(--good)} .rpgs .down{color:var(--bad)} .rpgs .eq{color:var(--muted)}
+.rpgv{font-size:12.5px;font-weight:600;padding:8px 10px;border-radius:10px;text-align:center}
+.rpgv.up{color:var(--good);background:color-mix(in srgb,var(--good) 12%,transparent)}
+.rpgv.down{color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.rpgv.lean{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+.rpgv.eq{color:var(--muted);background:var(--sub)}
+.rpgb{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .lv{display:flex;flex-direction:column;gap:4px;padding:0 12px 10px}
 .lvh{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);flex-wrap:wrap}
 .lvr{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;font-size:12px;border-top:1px solid var(--line);padding-top:5px}
@@ -296,7 +317,7 @@ td.addc{width:34px;padding-left:6px}
     <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--on-accent)" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="var(--on-accent)"/></svg>
     Radar de picks
   </h1>
-    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-r</span>
+    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-s</span>
       <button class="btn sm" id="refresh">Actualizar</button>
       <button class="icon" id="theme" aria-label="Cambiar tema claro u oscuro">☀︎</button></div>
   </div>
@@ -439,17 +460,17 @@ td.addc{width:34px;padding-left:6px}
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
 </div>
 <button class="slipbar hidden" id="slipbar" aria-label="Ver ticket"></button>
-<script src="model.js?v=20261121r"></script>
-<script src="context.js?v=20261121r"></script>
-<script src="data.js?v=20261121r"></script>
-<script src="app.js?v=20261121r"></script>
-<script src="day.js?v=20261121r"></script>
-<script src="props.js?v=20261121r"></script>
-<script src="reading.js?v=20261121r"></script>
-<script src="dayui.js?v=20261121r"></script>
-<script src="optimize.js?v=20261121r"></script>
-<script src="slip.js?v=20261121r"></script>
-<script src="live.js?v=20261121r"></script>
-<script src="saved.js?v=20261121r"></script>
+<script src="model.js?v=20261121s"></script>
+<script src="context.js?v=20261121s"></script>
+<script src="data.js?v=20261121s"></script>
+<script src="app.js?v=20261121s"></script>
+<script src="day.js?v=20261121s"></script>
+<script src="props.js?v=20261121s"></script>
+<script src="reading.js?v=20261121s"></script>
+<script src="dayui.js?v=20261121s"></script>
+<script src="optimize.js?v=20261121s"></script>
+<script src="slip.js?v=20261121s"></script>
+<script src="live.js?v=20261121s"></script>
+<script src="saved.js?v=20261121s"></script>
 </body>
 </html>
