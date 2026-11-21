@@ -220,6 +220,17 @@ t('marcador en vivo: asegurada, en riesgo, calificación', () => {
   }
   assert(LV.grade([{ st: 'won' }, { st: 'won' }]) === 'ganado' && LV.grade([{ st: 'won' }, { st: 'lost' }]) === 'perdido' && LV.grade([{ st: 'won' }, { st: 'ok' }]) === null);
 });
+t('córners y tarjetas entran al ticket solo como selección estimada de ligas validadas', () => {
+  global.RadarProps = require('../props.js');
+  const Yd = require('../day.js');
+  const ev = { homeId: 'h', awayId: 'a', homeName: 'Home FC', awayName: 'Away FC' };
+  const evs = [];
+  for (let i = 0; i < 30; i++) evs.push({ id: String(i), homeId: i % 2 ? 'h' : 'x' + i, awayId: i % 2 ? 'y' + i : 'a', stats: { home: { wonCorners: 6, totalShots: 14, shotsOnTarget: 5, foulsCommitted: 11 }, away: { wonCorners: 4, totalShots: 10, shotsOnTarget: 3, foulsCommitted: 12 } } });
+  const avgs = global.RadarProps.teamAverages(evs);
+  const L = Yd.propLegs(ev, avgs, 'eng.1');
+  assert(L.length && L.every(l => l.prop && l.odd === null && /Córners|Tarjetas/.test(l.group) && l.worst < l.p));
+  assert(Yd.PROP_LGS.includes('eng.1') && !Yd.PROP_LGS.includes('mex.1'));
+});
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
   OP._useMemory({});
