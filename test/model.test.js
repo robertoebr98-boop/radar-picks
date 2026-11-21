@@ -174,6 +174,22 @@ t('últimos 5 enfrentamientos: resumen y peso 10%', () => {
   const c = M.expectedGoals({ ...JSON.parse(JSON.stringify(base)), h2h: { n: 2, gH: 3, gA: 0 } });
   assert.strictEqual(c.lh, a.lh);
 });
+t('más selecciones seguras: escalera baja la prob y sube el momio', () => {
+  const mk = (p, est, tag = 'x') => ({ id: 'a', label: 'L', p, worst: p, est, odd: null, tag });
+  const ms = [{ legs: [mk(0.75, 1.30), mk(0.85, 1.12)] }, { legs: [mk(0.70, 1.35)] }, { legs: [mk(0.50, 1.90, 'volado')] }];
+  const r = Y.safeLadder(ms, 1.30);
+  assert.strictEqual(r.length, 2);
+  assert(Math.abs(r[1].p - 0.75 * 0.70) < 1e-9 && r[1].odd > r[0].odd);
+  assert.strictEqual(Y.safeLadder(ms, 1.10)[0].legs[0].leg.p, 0.85);
+});
+t('mejor momio para tu riesgo: respeta la prob. mínima y maximiza el momio', () => {
+  const mk = (id, p, est) => ({ id, label: id, p, worst: p, est, odd: null, tag: 'x' });
+  const ms = [{ legs: [mk('a1', 0.80, 1.18), mk('a2', 0.65, 1.45)] }, { legs: [mk('b1', 0.75, 1.26), mk('b2', 0.60, 1.57)] }, { legs: [mk('c1', 0.70, 1.35)] }];
+  const r = Y.bestCombos(ms, 0.40, 1.15, 3);
+  for (const x of r) assert(x.p >= 0.40 - 1e-9, x.p);
+  const two = r.find(x => x.n === 2);
+  assert(two && Math.abs(two.odd - 1.57 * 1.35) < 1e-9, JSON.stringify(two && two.odd)); // a2+b2 = 39% no entra; la que más paga con ≥40% es b2+c1 (42%)
+});
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
   OP._useMemory({});

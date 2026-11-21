@@ -193,7 +193,67 @@
     return { matches: upcoming, live, played, review, rules, ticket: buildTicket(upcoming, rules), value: valuePicks(upcoming), errors };
   }
 
-  const api = { US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
+  // "Más selecciones seguras": en cada partido la selección MÁS probable que aún pague al menos minOdd,
+  // y combinaciones de 1, 2, 3… partidos (de la más segura a la menos). Cada selección extra multiplica la
+  // probabilidad hacia abajo y suma el margen de la casa.
+  function safeLadder(matches, minOdd = TICKET.MIN_ODD, maxN = 8) {
+    const picks = [];
+    for (const m of matches) {
+      const ok = (m.legs || []).filter(l => l.tag !== 'volado' && (l.odd || l.est) >= minOdd && l.p > 0.55);
+      if (!ok.length) continue;
+      ok.sort((a, b) => b.p - a.p || b.worst - a.worst);
+      picks.push({ match: m, leg: ok[0] });
+    }
+    picks.sort((a, b) => b.leg.p - a.leg.p);
+    const rows = [];
+    let p = 1, odd = 1, real = 0;
+    for (let i = 0; i < Math.min(maxN, picks.length); i++) {
+      const L = picks[i].leg, o = L.odd || L.est;
+      p *= L.p; odd *= o; if (L.odd) real++;
+      rows.push({ n: i + 1, legs: picks.slice(0, i + 1), p, odd, ev: p * odd - 1, real });
+    }
+    return rows;
+  }
+
+  // "Mejor momio para tu riesgo": combinaciones (una selección por partido) con prob. total ≥ minP que
+  // dan el momio total más alto, para 1…maxN selecciones. Programación dinámica sobre −log(prob).
+  function bestCombos(matches, minP = 0.40, minOdd = TICKET.MIN_ODD, maxN = 6) {
+    const STEP = 0.01, B = Math.ceil(-Math.log(minP) / STEP);
+    const opts = [];
+    for (const m of matches) {
+      const ok = (m.legs || []).filter(l => l.tag !== 'volado' && (l.odd || l.est) >= minOdd && l.p > 0.55)
+        .map(l => ({ match: m, leg: l, c: Math.ceil(-Math.log(l.p) / STEP), g: Math.log(l.odd || l.est) }));
+      if (ok.length) opts.push(ok);
+    }
+    // dp[n][b] = mejor {g, picks} usando n selecciones con "costo" de probabilidad b.
+    let dp = Array.from({ length: maxN + 1 }, () => new Array(B + 1).fill(null));
+    dp[0][0] = { g: 0, picks: [] };
+    for (const ok of opts) {
+      const nx = dp.map(r => r.slice());
+      for (let n = 0; n < maxN; n++) for (let b = 0; b <= B; b++) {
+        const cur = dp[n][b]; if (!cur) continue;
+        for (const o of ok) {
+          const nb = b + o.c; if (nb > B) continue;
+          const g = cur.g + o.g;
+          if (!nx[n + 1][nb] || nx[n + 1][nb].g < g) nx[n + 1][nb] = { g, picks: [...cur.picks, o] };
+        }
+      }
+      dp = nx;
+    }
+    const rows = [];
+    for (let n = 1; n <= maxN; n++) {
+      let best = null;
+      for (const s of dp[n]) if (s && (!best || s.g > best.g)) best = s;
+      if (!best) continue;
+      const legs = best.picks.map(o => ({ match: o.match, leg: o.leg }));
+      const p = legs.reduce((a, x) => a * x.leg.p, 1), odd = legs.reduce((a, x) => a * (x.leg.odd || x.leg.est), 1);
+      if (p < minP) continue;
+      rows.push({ n, legs, p, odd, ev: p * odd - 1, real: legs.filter(x => x.leg.odd).length });
+    }
+    return rows.sort((a, b) => b.odd - a.odd);
+  }
+
+  const api = { bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarDay = api;
 })(typeof window !== 'undefined' ? window : globalThis);

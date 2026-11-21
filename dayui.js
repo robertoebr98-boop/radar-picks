@@ -143,6 +143,25 @@
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
   let SHOWN = [];
+  let LADMIN = 1.30, LADP = 0.40, LAST = null;
+  function renderLadder() {
+    const box = $('ladder');
+    if (!box || !LAST) return;
+    const rows = Y.bestCombos(LAST.matches, LADP, LADMIN);
+    if (!rows.length) { box.innerHTML = `<p class="note">Ninguna combinación llega a ${Math.round(LADP * 100)}% con momio mínimo ${LADMIN.toFixed(2)}. Baja la prob. mínima o el momio mínimo.</p>`; return; }
+    const stake = (window.RadarSlip && window.RadarSlip.snapshot().stake) || 10;
+    box.innerHTML = rows.map((x, i) => `<div class="combo${i === 0 ? ' top' : ''}">
+      <div class="ch"><span><b>${x.n} ${x.n === 1 ? 'selección' : 'selecciones'}</b>${i === 0 ? ' <span class="st ok">paga más</span>' : ''}</span>
+        <span class="num">prob <b>${pct(x.p)}</b> · momio <b>${f2(x.odd)}</b> · $${stake} → <b>$${(stake * x.odd).toFixed(0)}</b></span></div>
+      <div class="m">${x.legs.map(l => `<b>${esc(l.leg.label)}</b> ${matchTitle(l.match)} (${pct(l.leg.p)}${l.leg.odd ? ', ESPN ' + f2(l.leg.odd) : ''})`).join('<br>')}</div>
+      <div class="m">valor esperado ${(x.ev * 100).toFixed(0)}% ${x.real < x.n ? `· ${x.n - x.real} con momio estimado` : '· todos con momio real'}</div>
+      <button class="btn ghost sm" data-lad="${i}">Pasar a la calculadora</button></div>`).join('');
+    box.querySelectorAll('[data-lad]').forEach(b => b.addEventListener('click', () => {
+      const row = rows[+b.dataset.lad];
+      for (const x of row.legs) { const l = legOf(x); if (!window.RadarSlip.has(l.key)) window.RadarSlip.add(l); }
+      $('slip').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+  }
 
   // Mercados principales de un partido con su momio provisional (ESPN, consenso o estimado).
   const MAIN_MK = ['1', 'X', '2', '1X', 'X2', '12', 'O1.5', 'O2.5', 'O3.5', 'U2.5', 'U3.5', 'BTTS', 'NBTTS', 'H0.5', 'A0.5', 'H1.5', 'A1.5', '1&O1.5', '2&O1.5'];
@@ -227,6 +246,12 @@
     } else html += '<p class="note">Ningún partido de este día pasa los filtros. Mejor no apostar.</p>';
     html += '</div>';
 
+    // Mejor momio para tu riesgo: ranking de combinaciones con prob. total mínima.
+    html += `<div class="tk"><h3>Mejor momio para tu riesgo</h3>
+      <div class="opth"><label class="m">Prob. total mínima <select class="in sm" id="ladp">${[0.30, 0.40, 0.50, 0.60].map(x => `<option value="${x}" ${x === LADP ? 'selected' : ''}>${Math.round(x * 100)}%</option>`).join('')}</select></label>
+      <label class="m">Momio mínimo por selección <select class="in sm" id="ladmin">${[1.30, 1.25, 1.20, 1.15].map(x => `<option value="${x}" ${x === LADMIN ? 'selected' : ''}>${x.toFixed(2)}${x === 1.30 ? ' (tu regla)' : ''}</option>`).join('')}</select></label></div>
+      <div id="ladder"></div>
+      <p class="note">Busca entre todos los mercados de los partidos por empezar (una selección por partido) la combinación que paga más sin bajar de la probabilidad total que elegiste. <b>Ojo:</b> con momios estimados, para el mismo riesgo <b>menos selecciones pagan más</b>, porque cada selección extra suma el margen de la casa (~6%). Más selecciones solo convienen si sus momios reales de Draftea pagan más de lo justo.</p></div>`;
     if (r.value.length) {
       html += '<h3>Picks con valor (momio de referencia ESPN)</h3>' + [...r.value].sort((a, b) => byTime(a.match, b.match)).map(x => `<div class="leg"><span>${hr(x.match.ev.date)} <b>${esc(x.leg.label)}</b><br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)}</span></span>
         <span style="text-align:right"><b class="num">${f2(x.leg.odd)}</b><br><span class="m">prob ${pct(x.leg.p)} · valor ${f2(x.leg.ev)}</span></span>${btn(x)}</div>`).join('');
@@ -263,6 +288,9 @@
     html += opSummary();
     html += '<p class="note">Toca un partido de fútbol para ver el análisis completo y capturar tus momios. NBA y NFL usan la probabilidad de la casa sin margen (sin modelo propio todavía). El pronóstico del día usa tabla + forma + momios; el análisis completo además usa local/visita y bajas.</p>';
     $('dout').innerHTML = html;
+    LAST = r; renderLadder();
+    const lm = $('ladmin'); if (lm) lm.addEventListener('change', () => { LADMIN = +lm.value; renderLadder(); });
+    const lp = $('ladp'); if (lp) lp.addEventListener('change', () => { LADP = +lp.value; renderLadder(); });
     const all = $('addall');
     if (all) all.addEventListener('click', () => {
       for (const x of t.legs) { const l = legOf(x); if (!window.RadarSlip.has(l.key)) window.RadarSlip.add(l); }
