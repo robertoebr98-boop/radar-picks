@@ -128,7 +128,7 @@
   let SHOWN = [];
   let DMODE = 'normal';
   let LADMIN = 1.30, LADP = 0.40, LAST = null, LASTREQ = null;
-  const DREAM = { stake: 5, target: 30000, days: 1, minP: 0.65, per: 2, extra: [] };
+  const DREAM = { stake: 5, target: 30000, days: 3, minP: 0.65, per: 2, extra: [] };
   async function buildDream() {
     const date = LASTREQ && LASTREQ.date;
     const box = $('dream'); if (!box || !LAST) return;
