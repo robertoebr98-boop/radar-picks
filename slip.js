@@ -9,7 +9,8 @@
   let S = load();
   // Mercados vistos en la página (análisis, pronóstico del día, panel de mercados): de aquí salen las alternativas del optimizador.
   const POOL = new Map(); // matchKey -> {match, items: Map key -> leg}
-  let OPT = null;         // propuesta pendiente {after, changes}
+  let OPT = null;
+  let DFTV = false; const DONE = new Set(); // checklist para Draftea         // propuesta pendiente {after, changes}
   let optMode = 'keep';
   let optOpen = false; // incluir partidos de tickets abiertos
   const openMatches = () => optOpen ? new Set() : (window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set());
@@ -164,7 +165,8 @@
       ${sgpHtml()}
       ${warn.length ? `<details class="wmini"><summary>⚠ ${warn.length} ${warn.length === 1 ? 'aviso' : 'avisos'} <span class="m">${esc(warn[0])}</span></summary><ul>${warn.map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>` : ''}
       ${optHtml()}
-      <button class="btn ghost sm" id="slipclear">Vaciar ticket</button>`
+      <div class="slact"><button class="btn sm" id="dftv">${DFTV ? 'Cerrar lista' : 'Pasar a Draftea'}</button><button class="btn ghost sm" id="slipclear">Vaciar ticket</button></div>
+      ${DFTV ? draftHtml() : ''}`
       : '<p class="note">Toca <b>+</b> en cualquier mercado, en el ticket sugerido o en los picks con valor para armar tu ticket.</p>';
     $('slipstake').value = S.stake;
     $('slipbar').classList.toggle('hidden', !S.legs.length);
@@ -175,6 +177,10 @@
       if (l) { l.dft = isFinite(n) && n > 1 ? +n.toFixed(2) : null; save(); setTimeout(render); }
     }));
     $('slipbody').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => remove(b.dataset.rm)));
+    const dv = $('dftv'); if (dv) dv.addEventListener('click', () => { DFTV = !DFTV; render(); if (DFTV) { const b = $('dftbox2'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } });
+    $('slipbody').querySelectorAll('[data-done]').forEach(b => b.addEventListener('change', () => { if (b.checked) DONE.add(b.dataset.done); else DONE.delete(b.dataset.done); render(); }));
+    $('slipbody').querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => copyTxt(b.dataset.copy, b)));
+    const ca = $('dftcopy'); if (ca) ca.addEventListener('click', () => copyTxt(draftText(), ca));
     const clr = $('slipclear'); if (clr) clr.addEventListener('click', () => { S.legs = []; OPT = null; save(); render(); });
     const bk = $('bank'); if (bk) bk.addEventListener('change', () => { const n = parseFloat(bk.value.replace(',', '.')); try { if (n > 0) localStorage.setItem(BK, String(n)); else localStorage.removeItem(BK); } catch (e) { /* nada */ } render(); });
     const us = $('usesug'); if (us) us.addEventListener('click', () => { const MO = window.RadarMoney, c2 = calc(), R2 = totals(+S.stake || 0, S.legs, used); const kind = ($('savekind') && $('savekind').value) || 'regular'; const open = window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set(); const sg = MO.suggestStake({ bank: bank(), p: c2.p, odd: R2.odd, kind, overlap: S.legs.some(l => open.has(l.matchKey)) }); S.stake = sg.amount; save(); render(); });
@@ -230,6 +236,59 @@
     const sg = b && R.ready ? MO.suggestStake({ bank: b, p: c.p, odd: R.odd, kind, overlap }) : null;
     return `<div class="sug"><label class="m">Saldo $<input class="in sm" id="bank" inputmode="decimal" value="${b || ''}" placeholder="tu saldo" style="width:90px"></label>
       ${sg ? `<span>Sugerido: <b class="num">$${sg.amount}</b> <span class="m">${esc(sg.why)}</span></span>${sg.amount > 0 && sg.amount !== +S.stake ? '<button class="btn ghost sm" id="usesug">Usar</button>' : ''}` : `<span class="m">${b ? 'faltan momios' : 'escribe tu saldo para ver el monto sugerido'}</span>`}</div>`;
+  }
+
+  // ---- Lista para pasar el ticket a Draftea (no hay forma pública de cargar un boleto: se arma a mano, en orden) ----
+  // Nombre del mercado como suele aparecer en las casas mexicanas.
+  function draftMarket(l) {
+    const id = String(l.key || '').slice(String(l.matchKey || '').length + 1);
+    if (['1', 'X', '2'].includes(id)) return 'Resultado final (1X2)';
+    if (['1X', 'X2', '12'].includes(id)) return 'Doble oportunidad';
+    if (/^[OU]\d/.test(id)) return 'Total de goles';
+    if (/^N?BTTS$/.test(id)) return 'Ambos equipos anotan';
+    if (/^[HA]\d/.test(id)) return 'Total de goles del equipo';
+    if (/&/.test(id)) return 'Resultado + total (combinado)';
+    if (/^C/.test(id)) return 'Tiros de esquina';
+    if (/^K/.test(id)) return 'Tarjetas';
+    if (/^T/.test(id)) return 'Tiros a puerta';
+    if (/^S/.test(id)) return 'Tiros totales';
+    return 'Mercado';
+  }
+  const lgName = l => { const id = String(l.matchKey || '').split(':')[0]; const L = window.RadarData && window.RadarData.LEAGUES.find(x => x.id === id); return L ? L.name : id.toUpperCase(); };
+  function draftGroups() {
+    const g = new Map();
+    for (const l of [...S.legs].sort(byTime)) {
+      const k = lgName(l); if (!g.has(k)) g.set(k, new Map());
+      const mm = g.get(k); if (!mm.has(l.matchKey)) mm.set(l.matchKey, { match: l.match, t: l.t, legs: [] });
+      mm.get(l.matchKey).legs.push(l);
+    }
+    return g;
+  }
+  function draftText() {
+    const out = [];
+    for (const [lg, mm] of draftGroups()) {
+      out.push(lg.toUpperCase());
+      for (const m of mm.values()) { out.push(`${m.t ? hourMX(m.t) + ' ' : ''}${m.match}`); for (const l of m.legs) out.push(`  - ${draftMarket(l)}: ${l.label}${l.dft ? ' @' + l.dft : ''}`); }
+    }
+    return out.join('\n');
+  }
+  function copyTxt(t, btn) {
+    const ok = () => { const o = btn.textContent; btn.textContent = 'Copiado ✓'; setTimeout(() => { btn.textContent = o; }, 1200); };
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(ok, () => {}); else { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); ok(); } catch (e) { /* nada */ } a.remove(); }
+  }
+  function draftHtml() {
+    const total = S.legs.length, done = S.legs.filter(l => DONE.has(l.key)).length;
+    let h = '';
+    for (const [lg, mm] of draftGroups()) {
+      h += `<div class="dfl">${esc(lg)}</div>`;
+      for (const m of mm.values()) {
+        const team = String(m.match).split(' vs ')[0];
+        h += `<div class="dfm"><div class="dfmh"><span>${m.t ? `<span class="hr num">${hourMX(m.t)}</span> ` : ''}<b>${esc(m.match)}</b></span><button class="btn ghost sm" data-copy="${esc(team)}" title="Copia el nombre para pegarlo en el buscador de Draftea">Copiar para buscar</button></div>
+          ${m.legs.map(l => `<label class="dfi${DONE.has(l.key) ? ' done' : ''}"><input type="checkbox" data-done="${esc(l.key)}" ${DONE.has(l.key) ? 'checked' : ''}><span><span class="m">${esc(draftMarket(l))}</span><br><b>${esc(l.label)}</b></span><span class="num">${l.dft ? l.dft.toFixed(2) : l.prov ? '~' + l.prov.toFixed(2) : ''}</span></label>`).join('')}</div>`;
+      }
+    }
+    return `<div class="dftv" id="dftbox2"><div class="dfmh"><b>Lista para Draftea · ${done}/${total}</b><button class="btn ghost sm" id="dftcopy">Copiar lista</button></div>
+      <p class="note">En orden de hora y por liga, como aparecen en Draftea. Busca el equipo, agrega cada selección y palomea.</p>${h}</div>`;
   }
 
   // Botón Optimizar ticket y su propuesta (antes vs después).

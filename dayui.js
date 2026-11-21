@@ -268,7 +268,8 @@
     let html = '';
     // Estrategia del día según cómo le fue al modelo en los partidos ya jugados.
     const modeCls = { normal: 'ok', cauteloso: 'vol', defensivo: 'bad' }[R.mode] || 'no';
-    html += `<div class="strat"><span class="st ${modeCls}">Estrategia: ${esc(R.mode || 'normal')}</span> <span>${esc(R.why || '')}</span></div>`;
+    // Estrategia: solo se muestra cuando ya hay partidos jugados o el modo cambió (si no, es ruido).
+    if ((R.mode && R.mode !== 'normal') || (r.review && r.review.n)) html += `<div class="strat"><span class="st ${modeCls}">Estrategia: ${esc(R.mode || 'normal')}</span> <span>${esc(R.why || '')}</span></div>`;
     if (!r.matches.length) html += '<p class="note">Ya no quedan partidos por empezar ese día. Abajo ves cómo le fue al modelo.</p>';
     const dreamForm = `<div class="opth">
         <label class="m">Entrada $<input class="in sm" id="drstake" type="number" min="1" step="1" value="${DREAM.stake}" style="width:70px"></label>
