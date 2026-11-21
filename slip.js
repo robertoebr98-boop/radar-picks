@@ -124,19 +124,19 @@
     const warn = [];
     if (S.legs.length > 10) warn.push(`Tienes ${S.legs.length} selecciones; tu regla es máximo 10.`);
     if (c.low.length) warn.push(`${c.low.length} selección(es) con momio menor a 1.30.`);
-    if (c.volados.length) warn.push(`${c.volados.length} volado(s) (45–55%): son los que tumban tickets.`);
+    if (c.volados.length) warn.push(`${c.volados.length} volado(s) (45–55%).`);
 
     // Colchón de sorpresas: los favoritos también pierden.
     const favs = S.legs.filter(l => l.p >= 0.6 && l.p < 0.8);
-    if (favs.length >= 2) warn.push(`Colchón de sorpresas: ${favs.length} selecciones entre 60% y 80%. Un favorito de 70% falla 3 de cada 10; con estas, lo normal es fallar ${(favs.reduce((a, l) => a + 1 - l.p, 0)).toFixed(1)}.`);
+    if (favs.length >= 2) warn.push(`Sorpresas: lo normal es que falle ${(favs.reduce((a, l) => a + 1 - l.p, 0)).toFixed(1)} de ${favs.length} favoritas (60–80%).`);
     for (const l of S.legs) {
       const id = l.key.split(':').pop();
       if ((id === '1' || id === '2') && l.p < 0.75) {
         const g = POOL.get(l.matchKey), dc = g && g.items.get(`${l.matchKey}:${id === '1' ? '1X' : 'X2'}`);
-        if (dc && dc.p - l.p >= 0.1) warn.push(`${l.label} (${pct(l.p)}): con doble oportunidad "${dc.label}" sube a ${pct(dc.p)}${dc.prov ? `, momio ~${dc.prov.toFixed(2)}` : ''}.`);
+        if (dc && dc.p - l.p >= 0.1) warn.push(`${l.label} → "${dc.label}": ${pct(l.p)} a ${pct(dc.p)}${dc.prov ? ` (~${dc.prov.toFixed(2)})` : ''}.`);
       }
     }
-    if (c.withDft < S.legs.length) warn.push(`${S.legs.length - c.withDft} selección(es) sin momio de Draftea: se calcula con el provisional.`);
+    if (c.withDft < S.legs.length) warn.push(`${S.legs.length - c.withDft} sin momio de Draftea (usa el provisional).`);
     const P = c.prov, R = c.real;
     const evCls = R.ev >= 0 ? 'good' : 'bad';
     const sign = x => (x >= 0 ? '+' : '') + money(x);
@@ -159,9 +159,9 @@
         ${c.weakest ? `<span>Sin la más débil (${esc(c.weakest.label)})</span><b class="num">${pct(c.pNoWeak)}</b>` : ''}
         <span>Momio justo según el modelo</span><b class="num">${c.fair ? c.fair.toFixed(2) : '-'}</b>
       </div>
-      <p class="note">"Con Draftea" usa tu momio donde lo escribiste y el provisional en el resto (${c.withDft} de ${S.legs.length} con Draftea). ${R.ready ? (R.ev >= 0 ? `En promedio ganarías ${money(R.ev)} por ticket a la larga.` : `En promedio pierdes ${money(-R.ev)} por ticket a la larga: la casa paga menos de lo que vale.`) : ''} Pega 1 de cada ${c.p > 0 ? Math.round(1 / c.p).toLocaleString('es-MX') : '∞'} veces.</p></details>
+      <p class="note">${c.withDft} de ${S.legs.length} con momio de Draftea; el resto usa el provisional.</p></details>
       ${sgpHtml()}
-      ${warn.length ? `<div class="warnbox">${warn.map(esc).join('<br>')}</div>` : ''}
+      ${warn.length ? `<details class="wmini"><summary>⚠ ${warn.length} ${warn.length === 1 ? 'aviso' : 'avisos'} <span class="m">${esc(warn[0])}</span></summary><ul>${warn.map(w => `<li>${esc(w)}</li>`).join('')}</ul></details>` : ''}
       ${optHtml()}
       <button class="btn ghost sm" id="slipclear">Vaciar ticket</button>`
       : '<p class="note">Toca <b>+</b> en cualquier mercado, en el ticket sugerido o en los picks con valor para armar tu ticket.</p>';
@@ -206,9 +206,10 @@
       const free = pool ? [...pool.items.values()].filter(x => !have.has(x.key) && defs[x.key.slice(mk.length + 1)])
         .map(x => ({ x, f: base > 0 ? gi.P([...gi.fns, defs[x.key.slice(mk.length + 1)]]) / base : 0 }))
         .filter(o => o.f >= 0.95 && o.x.p < 0.97).sort((a, b) => a.x.p - b.x.p).slice(0, 3) : [];
-      const freeHtml = free.length ? `<p class="m">Casi gratis con lo que ya llevas (pasan ≥ 95% de las veces si se cumple lo demás): ${free.map(o => `${esc(o.x.label)} (×${o.f.toFixed(2)}) ${window.RadarSlipBtn ? window.RadarSlipBtn({ ...o.x, matchKey: mk, match: g[0].match }) : ''}`).join(' · ')}</p>` : '';
+      const freeHtml = free.length ? `<p class="m" title="Pasan 95% o más de las veces si se cumple lo que ya llevas">Casi gratis ⓘ: ${free.map(o => `${esc(o.x.label)} (×${o.f.toFixed(2)}) ${window.RadarSlipBtn ? window.RadarSlipBtn({ ...o.x, matchKey: mk, match: g[0].match }) : ''}`).join(' · ')}</p>` : '';
+      if (g.length === 1) { if (freeHtml) html += `<div class="sgp"><b>${esc(g[0].match)}</b>${freeHtml}</div>`; continue; }
       html += `<div class="sgp"><b>Mismo partido: ${esc(g[0].match)}</b>
-        <p class="m">Goles esperados: ${esc(String(g[0].match).split(' vs ')[0] || 'local')} ${gi.lam[0].toFixed(2)} · ${esc(String(g[0].match).split(' vs ')[1] || 'visita')} ${gi.lam[1].toFixed(2)}. Juntas: <b>${pct(gi.p)}</b> (si fueran independientes saldría ${pct(indep)}; están ligadas)</p>
+        <p class="m">Goles esperados: ${esc(String(g[0].match).split(' vs ')[0] || 'local')} ${gi.lam[0].toFixed(2)} · ${esc(String(g[0].match).split(' vs ')[1] || 'visita')} ${gi.lam[1].toFixed(2)}. Juntas: <b>${pct(gi.p)}</b> <span title="Si fueran independientes">(sueltas ${pct(indep)})</span></p>
         ${rows ? `<ul>${rows}</ul>` : ''}${gi.other.length ? `<p class="m">${gi.other.length} selección(es) de córners/tarjetas se calculan aparte.</p>` : ''}${freeHtml}</div>`;
     }
     return html;
@@ -223,8 +224,8 @@
       <div class="opth"><button class="btn sm" id="optgo">Optimizar ticket</button>
       <select class="in sm" id="optmode" aria-label="Modo del optimizador">${[['keep', 'Mismo número de selecciones'], ['grow', 'Puede alargar el ticket'], ['cut', 'Puede acortar (solo quitar)']].map(([v, l]) => `<option value="${v}" ${optMode === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
       <label class="m"><input type="checkbox" id="optopen" ${optOpen ? 'checked' : ''}> Incluir partidos de mis tickets abiertos</label></div>
-      <p class="note">Cambia por mercados con más valor (prob × momio) respetando tus reglas: momio ≥ 1.30, prob ≥ 60%, sin volados. Para sumar de otros partidos necesita momio real (ESPN, consenso o Draftea) con valor ≥ 1.05.</p>
-      ${real < S.legs.length ? `<div class="warnbox"><b>Ojo:</b> ${S.legs.length - real} de ${S.legs.length} selecciones usan momio <b>estimado</b>. Con momio estimado el valor esperado positivo <b>no es real</b> (sale del mismo modelo). Escribe el momio de Draftea o usa mercados con momio ESPN/consenso para que el optimizador compare valor de verdad; si no, solo te cambia a opciones más seguras.</div>` : ''}`;
+      <p class="note" title="Reglas: momio ≥ 1.30, prob ≥ 60%, sin volados. Para sumar de otros partidos necesita momio real con valor ≥ 1.05.">Cambia por mercados con más valor respetando tus reglas. ⓘ</p>
+      ${real < S.legs.length ? `<p class="note" title="Con momio estimado el valor esperado sale del mismo modelo, no es real. Escribe el momio de Draftea para comparar de verdad.">${S.legs.length - real} de ${S.legs.length} con momio estimado: solo cambia a opciones más seguras. ⓘ</p>` : ''}`;
     if (!OPT) return head + '</div>';
     if (!OPT.changes.length && OPT.info && !OPT.info.cands && OPT.info.excluded && optMode !== 'cut') return head + `<p class="note">No encontré qué sumar: descarté ${OPT.info.excluded} partido(s) porque ya están en tus tickets abiertos. Marca "Incluir partidos de mis tickets abiertos" si quieres usarlos.</p></div>`;
     if (!OPT.changes.length) return head + '<p class="note good">No encontré cambios que suban el valor con lo que hay cargado. Abre "Mercados ▾" de tus partidos o analiza el partido para darle más opciones.</p></div>';

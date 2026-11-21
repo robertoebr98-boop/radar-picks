@@ -69,38 +69,31 @@
   }
 
   function render() {
-    const s = summary();
     let html = '';
+    // Regulares y soñadores llevan su propia estadística (un soñador casi siempre pierde: no debe ensuciar el récord).
+    const line = (lab, x) => `<div class="svsum"><b>${lab}</b><span>${x.hits}/${x.n} ganados</span><span class="num ${x.balance >= 0 ? 'good' : 'bad'}">${(x.balance >= 0 ? '+' : '') + money(x.balance)}</span><span class="m">${x.pend} pend. · ${money(x.pendStake)}</span></div>`;
     if (list.length) {
-      html += `<div class="sgrid one">
-        <span>Tickets cerrados</span><b class="num">${s.n} (${s.hits} ganados)</b>
-        <span>Apostado en cerrados</span><b class="num">${money(s.staked)}</b>
-        <span>Cobrado</span><b class="num">${money(s.won)}</b>
-        <span>Balance</span><b class="num ${s.balance >= 0 ? 'good' : 'bad'}">${(s.balance >= 0 ? '+' : '') + money(s.balance)}</b>
-        <span>Pendientes</span><b class="num">${s.pend} · ${money(s.pendStake)}</b>
-      </div>`;
       const r = summary('regular'), d = summary('sonador');
-      if (d.n + d.pend) html += `<div class="sgrid"><span></span><span class="hd">Regulares</span><span class="hd">Soñadores</span>
-        <span>Cerrados (ganados)</span><b class="num">${r.n} (${r.hits})</b><b class="num">${d.n} (${d.hits})</b>
-        <span>Balance</span><b class="num ${r.balance >= 0 ? 'good' : 'bad'}">${(r.balance >= 0 ? '+' : '') + money(r.balance)}</b><b class="num ${d.balance >= 0 ? 'good' : 'bad'}">${(d.balance >= 0 ? '+' : '') + money(d.balance)}</b></div>`;
+      html += line('Regulares', r);
+      if (d.n + d.pend) html += line('Soñadores', d);
     }
     html += list.map(t => {
       const cls = { ganado: 'ok', perdido: 'bad', pendiente: 'no' }[t.status] || 'no';
       const open = openId === t.id;
       const legs = open ? `<div class="svlegs">${[...t.legs].sort((a, b) => (a.t ? new Date(a.t).getTime() : Infinity) - (b.t ? new Date(b.t).getTime() : Infinity)).map(l => `<div class="svleg"><span>${esc(l.label)}<br><span class="m">${l.t ? `<span class="hr num">${new Date(l.t).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}</span> ` : ''}${esc(l.match)}${l.p ? ` · modelo ${Math.round(l.p * 100)}%` : ''}${l.hit === true ? ' ✓' : l.hit === false ? ' ✗' : ''}</span></span><span class="num">${l.dft ? 'Draftea ' + (+l.dft).toFixed(2) : 'prov. ' + (l.prov ? (+l.prov).toFixed(2) : '-')}</span></div>`).join('')}</div>` : '';
-      return `<div class="sv">
+      return `<div class="sv${open ? ' open' : ''}">
         <button class="svh" data-toggle="${t.id}" aria-expanded="${open}">
-          <span><b>${esc(t.name)}</b><br><span class="m">${fmt(t.createdAt)} · ${t.legs.length} selecciones · momio ${(+t.odd || 0).toFixed(2)} · ${money(+t.stake)} → ${money(+t.payout)}</span></span>
+          <span><b>${esc(t.name)}</b><br><span class="m num">${(+t.odd || 0).toFixed(2)}x · ${money(+t.stake)} → ${money(+t.payout)}</span></span>
           <span>${t.kind === 'sonador' ? '<span class="st lean">soñador</span> ' : ''}<span class="st ${cls}">${esc(t.status)}${t.auto ? ' (auto)' : ''}</span></span>
         </button>
-        ${liveHtml(t)}${legs}
-        <div class="svact">
+        ${liveHtml(t)}${open ? `<p class="m svmeta">${fmt(t.createdAt)} · ${t.legs.length} selecciones${t.p ? ` · prob ${Math.round(t.p * 100)}%` : ''}</p>` : ''}${legs}
+        ${open ? `<div class="svact">
           <button class="btn ghost sm" data-open="${t.id}">Abrir en calculadora</button>
           <button class="btn ghost sm" data-st="${t.id}:ganado">Ganado</button>
           <button class="btn ghost sm" data-st="${t.id}:perdido">Perdido</button>
           ${t.status !== 'pendiente' ? `<button class="btn ghost sm" data-st="${t.id}:pendiente">Pendiente</button>` : ''}
           <button class="btn ghost sm ${armed === t.id ? 'danger' : ''}" data-del="${t.id}">${armed === t.id ? '¿Seguro? Toca otra vez' : 'Borrar'}</button>
-        </div>
+        </div>` : ''}
       </div>`;
     }).join('') || '<p class="note">Aún no guardas tickets. Arma uno en la calculadora y dale "Guardar ticket".</p>';
     $('savedlist').innerHTML = html;
