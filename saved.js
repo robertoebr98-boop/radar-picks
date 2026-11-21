@@ -17,6 +17,8 @@
 
   function fmt(ts) { try { return new Date(ts).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
 
+  window.RadarSaved = { setKind: k => { const e = document.getElementById('savekind'); if (e) e.value = k; } };
+
   function saveCurrent() {
     const snap = window.RadarSlip.snapshot();
     if (!snap.legs.length) { $('savedmsg').innerHTML = '<p class="note">El ticket está vacío: agrega selecciones con +.</p>'; return; }
@@ -24,10 +26,10 @@
     const c = window.RadarSlip.calc();
     list.unshift({
       id: String(Date.now()), name, createdAt: Date.now(), stake: snap.stake, legs: snap.legs,
-      odd: c.real.odd, payout: c.real.payout, p: c.p, withDft: c.withDft, status: 'pendiente',
+      odd: c.real.odd, payout: c.real.payout, p: c.p, withDft: c.withDft, status: 'pendiente', kind: $('savekind').value || (c.real.odd >= 100 ? 'sonador' : 'regular'),
     });
     if (persist()) {
-      $('savename').value = '';
+      $('savename').value = ''; $('savekind').value = 'regular';
       $('savedmsg').innerHTML = `<p class="note good">Guardado: ${esc(name)}. Ya puedes vaciar el ticket y armar otro.</p>`;
     }
     render();
@@ -45,12 +47,13 @@
     $('slip').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function summary() {
-    const done = list.filter(t => t.status !== 'pendiente');
+  function summary(kind) {
+    const L = kind ? list.filter(t => (t.kind || 'regular') === kind) : list;
+    const done = L.filter(t => t.status !== 'pendiente');
     const staked = done.reduce((a, t) => a + (+t.stake || 0), 0);
     const won = done.filter(t => t.status === 'ganado').reduce((a, t) => a + (+t.payout || 0), 0);
     const hits = done.filter(t => t.status === 'ganado').length;
-    const pend = list.filter(t => t.status === 'pendiente');
+    const pend = L.filter(t => t.status === 'pendiente');
     return { n: done.length, hits, staked, won, balance: won - staked, pendStake: pend.reduce((a, t) => a + (+t.stake || 0), 0), pend: pend.length };
   }
 
@@ -65,6 +68,10 @@
         <span>Balance</span><b class="num ${s.balance >= 0 ? 'good' : 'bad'}">${(s.balance >= 0 ? '+' : '') + money(s.balance)}</b>
         <span>Pendientes</span><b class="num">${s.pend} · ${money(s.pendStake)}</b>
       </div>`;
+      const r = summary('regular'), d = summary('sonador');
+      if (d.n + d.pend) html += `<div class="sgrid"><span></span><span class="hd">Regulares</span><span class="hd">Soñadores</span>
+        <span>Cerrados (ganados)</span><b class="num">${r.n} (${r.hits})</b><b class="num">${d.n} (${d.hits})</b>
+        <span>Balance</span><b class="num ${r.balance >= 0 ? 'good' : 'bad'}">${(r.balance >= 0 ? '+' : '') + money(r.balance)}</b><b class="num ${d.balance >= 0 ? 'good' : 'bad'}">${(d.balance >= 0 ? '+' : '') + money(d.balance)}</b></div>`;
     }
     html += list.map(t => {
       const cls = { ganado: 'ok', perdido: 'bad', pendiente: 'no' }[t.status] || 'no';
@@ -73,7 +80,7 @@
       return `<div class="sv">
         <button class="svh" data-toggle="${t.id}" aria-expanded="${open}">
           <span><b>${esc(t.name)}</b><br><span class="m">${fmt(t.createdAt)} · ${t.legs.length} selecciones · momio ${(+t.odd || 0).toFixed(2)} · ${money(+t.stake)} → ${money(+t.payout)}</span></span>
-          <span class="st ${cls}">${esc(t.status)}</span>
+          <span>${t.kind === 'sonador' ? '<span class="st lean">soñador</span> ' : ''}<span class="st ${cls}">${esc(t.status)}</span></span>
         </button>
         ${legs}
         <div class="svact">

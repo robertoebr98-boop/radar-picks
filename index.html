@@ -208,6 +208,8 @@ ol.ev{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font
 .sgp ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .sgp .m{color:var(--muted);font-size:12px;margin:0}
 .sgp .addb{transform:scale(.85)}
+.tk.dream{border-color:var(--warn)}
+.dlegs{display:flex;flex-direction:column;gap:6px}
 .warnbox{background:var(--warn-soft);color:var(--warn);padding:8px 10px;border-radius:10px;font-size:12px}
 .money{display:inline-flex;align-items:center;gap:4px;font-weight:600}
 .slipbar{position:fixed;left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom,0px));width:min(568px,calc(100% - 32px));display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 14px;border-radius:14px;border:1px solid var(--accent);background:var(--card);color:var(--fg);font-size:12.5px;box-shadow:0 10px 30px rgb(0 0 0/.45);cursor:pointer;z-index:10;text-align:left}
@@ -251,7 +253,7 @@ td.addc{width:34px;padding-left:6px}
     <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--on-accent)" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="var(--on-accent)"/></svg>
     Radar de picks
   </h1>
-    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-i</span>
+    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-j</span>
       <button class="btn sm" id="refresh">Actualizar</button>
       <button class="icon" id="theme" aria-label="Cambiar tema claro u oscuro">☀︎</button></div>
   </div>
@@ -360,6 +362,7 @@ td.addc{width:34px;padding-left:6px}
     <div id="slipbody" style="display:flex;flex-direction:column;gap:8px"></div>
     <div class="row">
       <input class="in" id="savename" placeholder="Nombre (ej. Liga MX sábado)" aria-label="Nombre del ticket" style="flex:1 1 180px">
+      <select class="in" id="savekind" aria-label="Tipo de ticket" style="flex:0 1 140px"><option value="regular">Regular</option><option value="sonador">Soñador</option></select>
       <button class="btn" id="savebtn">Guardar ticket</button>
     </div>
   </section>
@@ -379,16 +382,16 @@ td.addc{width:34px;padding-left:6px}
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
 </div>
 <button class="slipbar hidden" id="slipbar" aria-label="Ver ticket"></button>
-<script src="model.js?v=20261121i"></script>
-<script src="context.js?v=20261121i"></script>
-<script src="data.js?v=20261121i"></script>
-<script src="app.js?v=20261121i"></script>
-<script src="day.js?v=20261121i"></script>
-<script src="props.js?v=20261121i"></script>
-<script src="dayui.js?v=20261121i"></script>
-<script src="optimize.js?v=20261121i"></script>
-<script src="opinion.js?v=20261121i"></script>
-<script src="slip.js?v=20261121i"></script>
-<script src="saved.js?v=20261121i"></script>
+<script src="model.js?v=20261121j"></script>
+<script src="context.js?v=20261121j"></script>
+<script src="data.js?v=20261121j"></script>
+<script src="app.js?v=20261121j"></script>
+<script src="day.js?v=20261121j"></script>
+<script src="props.js?v=20261121j"></script>
+<script src="dayui.js?v=20261121j"></script>
+<script src="optimize.js?v=20261121j"></script>
+<script src="opinion.js?v=20261121j"></script>
+<script src="slip.js?v=20261121j"></script>
+<script src="saved.js?v=20261121j"></script>
 </body>
 </html>

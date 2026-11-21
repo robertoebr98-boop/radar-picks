@@ -253,7 +253,38 @@
     return rows.sort((a, b) => b.odd - a.odd);
   }
 
-  const api = { bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
+  // Parlay soñador: la combinación MÁS PROBABLE (una selección por partido) cuyo momio total llega al objetivo.
+  // Maximiza la suma de log(prob) con la condición de que la suma de log(momio) alcance log(objetivo).
+  function dreamParlay(matches, targetOdd, maxN = 20) {
+    const STEP = 0.02, G = Math.ceil(Math.log(targetOdd) / STEP);
+    const opts = [];
+    for (const m of matches) {
+      const ok = (m.legs || []).filter(l => (l.odd || l.est) > 1.05 && l.p > 0.02)
+        .map(l => ({ match: m, leg: l, w: Math.max(1, Math.round(Math.log(l.odd || l.est) / STEP)), lp: Math.log(l.p) }));
+      if (ok.length) opts.push(ok);
+    }
+    // dp[b] = {lp, n, picks}: mejor log-prob alcanzando b pasos de momio (b = G significa "ya llegó").
+    let dp = new Array(G + 1).fill(null);
+    dp[0] = { lp: 0, n: 0, picks: [] };
+    for (const ok of opts) {
+      const nx = dp.slice();
+      for (let b = 0; b <= G; b++) {
+        const cur = dp[b]; if (!cur || cur.n >= maxN) continue;
+        for (const o of ok) {
+          const nb = Math.min(G, b + o.w), lp = cur.lp + o.lp;
+          if (!nx[nb] || nx[nb].lp < lp) nx[nb] = { lp, n: cur.n + 1, picks: [...cur.picks, o] };
+        }
+      }
+      dp = nx;
+    }
+    const best = dp[G];
+    if (!best) return null;
+    const legs = best.picks.map(o => ({ match: o.match, leg: o.leg }));
+    const p = legs.reduce((a, x) => a * x.leg.p, 1), odd = legs.reduce((a, x) => a * (x.leg.odd || x.leg.est), 1);
+    return { legs, p, odd, ev: p * odd - 1, real: legs.filter(x => x.leg.odd).length };
+  }
+
+  const api = { dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarDay = api;
 })(typeof window !== 'undefined' ? window : globalThis);

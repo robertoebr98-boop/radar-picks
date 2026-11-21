@@ -85,6 +85,7 @@
     try {
       const r = await Y.runDay(date, ids, (d, n) => { $('dmsg').innerHTML = `<div class="loading"><span class="spin"></span>Analizando ligas: ${d} de ${n}…</div>`; });
       $('dmsg').innerHTML = r.errors.length ? `<p class="note">No cargaron: ${esc(r.errors.join(' · '))}</p>` : '';
+      LASTREQ = { date, ids };
       render(r, date);
     } catch (e) {
       $('dmsg').innerHTML = `<div class="err">No pude armar el pronóstico: ${esc(e.message)}</div>`;
@@ -143,7 +144,39 @@
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
   let SHOWN = [];
-  let LADMIN = 1.30, LADP = 0.40, LAST = null;
+  let LADMIN = 1.30, LADP = 0.40, LAST = null, LASTREQ = null;
+  const DREAM = { stake: 5, target: 30000, days: 1, extra: [] };
+  async function buildDream() {
+    const box = $('dream'); if (!box || !LAST) return;
+    DREAM.stake = Math.max(1, +$('drstake').value || 5); DREAM.target = Math.max(100, +$('drtarget').value || 30000); DREAM.days = +$('drdays').value || 1;
+    let matches = [...LAST.matches];
+    if (DREAM.days > 1 && LASTREQ) {
+      box.innerHTML = '<div class="loading"><span class="spin"></span>Juntando partidos de los próximos días…</div>';
+      for (let d = 1; d < DREAM.days; d++) {
+        const dt = new Date(LASTREQ.date + 'T12:00:00'); dt.setDate(dt.getDate() + d);
+        try { const r2 = await Y.runDay(localISO(dt), LASTREQ.ids); matches.push(...r2.matches); } catch (e) { /* sigue con lo que hay */ }
+      }
+    }
+    const odd = DREAM.target / DREAM.stake;
+    const t = Y.dreamParlay(matches, odd);
+    if (!t) { box.innerHTML = `<p class="note">Con ${matches.length} partidos no se llega a momio ${Math.round(odd).toLocaleString('es-MX')}. Suma días o baja el objetivo.</p>`; return; }
+    const oneIn = Math.round(1 / t.p);
+    const p5 = Y.dreamParlay(matches, 20);
+    box.innerHTML = `<div class="sum"><span>${t.legs.length} selecciones · momio <b class="num">${Math.round(t.odd).toLocaleString('es-MX')}</b></span><span>$${DREAM.stake} → <b class="num">$${Math.round(DREAM.stake * t.odd).toLocaleString('es-MX')}</b></span></div>
+      <div class="warnbox"><b>Probabilidad real: ${(t.p * 100).toFixed(t.p < 0.001 ? 4 : 2)}%</b>, o sea, pega <b>1 de cada ${oneIn.toLocaleString('es-MX')}</b> intentos. Jugando $${DREAM.stake} cada semana, en promedio tardarías ${oneIn > 104 ? `${(oneIn / 52).toFixed(0)} años` : `${oneIn} semanas`} en pegarlo y gastarías ~$${(oneIn * DREAM.stake).toLocaleString('es-MX')} en el camino. Valor esperado ${(t.ev * 100).toFixed(0)}% por ticket${t.real < t.legs.length ? ' (con momios estimados; con momios reales de Draftea cambia)' : ''}.
+      ${p5 ? `<br>Para tener ~5% de probabilidad el momio debe ser ~20x: con estos partidos, momio ${p5.odd.toFixed(1)} pega ${(p5.p * 100).toFixed(1)}% ($${DREAM.stake} → $${Math.round(DREAM.stake * p5.odd)}).` : ''}</div>
+      <div class="dlegs">${t.legs.map(x => `<div class="leg"><span>${hr(x.match.ev.date)} <b>${esc(x.leg.label)}</b><br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)}</span></span><span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'aprox ' + f2(x.leg.est)}</span></span>${btn(x)}</div>`).join('')}</div>
+      <button class="btn ghost sm" id="dradd">Pasar el parlay soñador a la calculadora</button>
+      <p class="note">Elige en cada partido la selección que más momio da por cada punto de probabilidad que pierdes, hasta llegar al premio. Es la forma más probable de llegar a ese momio con estos partidos, pero sigue siendo una lotería: tómalo como entretenimiento, aparte de tus tickets regulares, y guárdalo en Mis tickets como "Soñador".</p>`;
+    const add = $('dradd');
+    if (add) add.addEventListener('click', () => {
+      for (const x of t.legs) { const l = legOf(x); if (!window.RadarSlip.has(l.key)) window.RadarSlip.add(l); }
+      if (window.RadarSlip.setStake) window.RadarSlip.setStake(DREAM.stake);
+      if (window.RadarSaved && window.RadarSaved.setKind) window.RadarSaved.setKind('sonador');
+      $('slip').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
   function renderLadder() {
     const box = $('ladder');
     if (!box || !LAST) return;
@@ -246,6 +279,14 @@
     } else html += '<p class="note">Ningún partido de este día pasa los filtros. Mejor no apostar.</p>';
     html += '</div>';
 
+    // Parlay soñador: entrada chica, premio grande, con la probabilidad real a la vista.
+    html += `<div class="tk dream"><h3>Parlay soñador</h3>
+      <div class="opth">
+        <label class="m">Entrada $<input class="in sm" id="drstake" type="number" min="1" step="1" value="${DREAM.stake}" style="width:70px"></label>
+        <label class="m">Premio objetivo $<input class="in sm" id="drtarget" type="number" min="100" step="1000" value="${DREAM.target}" style="width:100px"></label>
+        <label class="m">Partidos de <select class="in sm" id="drdays">${[1, 2, 3].map(d => `<option value="${d}" ${d === DREAM.days ? 'selected' : ''}>${d === 1 ? 'este día' : d + ' días'}</option>`).join('')}</select></label>
+        <button class="btn sm" id="drgo">Armar</button></div>
+      <div id="dream"></div></div>`;
     // Mejor momio para tu riesgo: ranking de combinaciones con prob. total mínima.
     html += `<div class="tk"><h3>Mejor momio para tu riesgo</h3>
       <div class="opth"><label class="m">Prob. total mínima <select class="in sm" id="ladp">${[0.30, 0.40, 0.50, 0.60].map(x => `<option value="${x}" ${x === LADP ? 'selected' : ''}>${Math.round(x * 100)}%</option>`).join('')}</select></label>
@@ -291,6 +332,7 @@
     LAST = r; renderLadder();
     const lm = $('ladmin'); if (lm) lm.addEventListener('change', () => { LADMIN = +lm.value; renderLadder(); });
     const lp = $('ladp'); if (lp) lp.addEventListener('change', () => { LADP = +lp.value; renderLadder(); });
+    const dg = $('drgo'); if (dg) dg.addEventListener('click', () => buildDream());
     const all = $('addall');
     if (all) all.addEventListener('click', () => {
       for (const x of t.legs) { const l = legOf(x); if (!window.RadarSlip.has(l.key)) window.RadarSlip.add(l); }

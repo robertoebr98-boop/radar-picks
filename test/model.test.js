@@ -190,6 +190,15 @@ t('mejor momio para tu riesgo: respeta la prob. mínima y maximiza el momio', ()
   const two = r.find(x => x.n === 2);
   assert(two && Math.abs(two.odd - 1.57 * 1.35) < 1e-9, JSON.stringify(two && two.odd)); // a2+b2 = 39% no entra; la que más paga con ≥40% es b2+c1 (42%)
 });
+t('parlay soñador: llega al momio objetivo con la combinación más probable', () => {
+  const mk = (id, p, est) => ({ id, label: id, p, worst: p, est, odd: null, tag: 'x' });
+  const ms = Array.from({ length: 8 }, () => ({ legs: [mk('fav', 0.70, 1.35), mk('dog', 0.25, 3.8), mk('x', 0.28, 3.4)] }));
+  const r = Y.dreamParlay(ms, 1000);
+  assert(r && r.odd >= 1000 * 0.97, r && r.odd);
+  // la prob. es la del producto de sus selecciones
+  assert(Math.abs(r.p - r.legs.reduce((a, x) => a * x.leg.p, 1)) < 1e-12);
+  assert.strictEqual(Y.dreamParlay(ms.slice(0, 1), 1e6), null);
+});
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
   OP._useMemory({});

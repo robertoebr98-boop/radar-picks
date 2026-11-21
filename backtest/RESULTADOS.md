@@ -105,3 +105,18 @@ Dado más de 2.5: ambos anotan 79.5% · local anota 92.6% · visita anota 86.9%.
 "Equipo anota" con ambos anotan ya incluido es 100% redundante. El modelo (matriz de marcadores) reproduce el 0.80 de ambos anotan | más de 2.5.
 Regla en la calculadora: una selección del mismo partido conviene solo si Draftea sube el momio del SGP al menos ×(1/factor condicional).
 Datos reales: P(visita anota | más de 2.5 y local anota) = 85.8% (5,695 partidos). Lo que la tumba: 3-0 (7.8%), 4-0 (4.0%), 5-0 (1.5%). Modelo con goles esperados 1.4–1.6: 93.6%; 1.3–1.0: 86%.
+
+## Combinaciones del mismo partido más "ligadas" (11,467 partidos), 21-nov-2026
+| base | + agregar | P(sola) | P(dado la base) | juntas | momio justo SGP vs. si fueran independientes |
+|---|---|---|---|---|---|
+| Gana visita | Visita 2+ goles | 36.2% | 78.0% | 24.8% | 4.04 vs 8.69 |
+| Gana local | Local 2+ goles | 44.5% | 79.2% | 34.2% | 2.92 vs 5.20 |
+| Ambos no anotan | Menos de 2.5 | 46.4% | 75.7% | 34.3% | 2.92 vs 4.76 |
+| Local 2+ goles | Más de 2.5 | 53.6% | 84.7% | 37.7% | 2.65 vs 4.19 |
+| Más de 2.5 | Ambos anotan | 54.7% | 79.5% | 42.6% | 2.35 vs 3.41 |
+| Local 2+ goles | Local o empate | 68.2% | 91.9% | 40.9% | 2.44 vs 3.29 |
+| Ambos no anotan | Menos de 3.5 | 68.4% | 89.7% | 40.6% | 2.46 vs 3.23 |
+Lectura: la correlación NO da valor por sí sola; Draftea ya la descuenta en el SGP. Conviene cuando el SGP paga más que el "momio justo SGP" de la tabla (la calculadora lo calcula por partido con sus goles esperados).
+
+## Parlay soñador
+$5 → $30,000 = momio 6,000: probabilidad justa 0.017% (1 de cada ~6,000); con el margen de la casa (~6% por selección, 10–12 selecciones) la real ronda 0.009%. Momio ~20x ≈ 5%.
