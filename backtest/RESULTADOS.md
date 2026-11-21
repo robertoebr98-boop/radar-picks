@@ -104,3 +104,4 @@ Datos reales (11,467 partidos): P(más de 2.5) 53.6% · P(ambos anotan) 54.7% ·
 Dado más de 2.5: ambos anotan 79.5% · local anota 92.6% · visita anota 86.9%. P(más de 2.5 y ambos anotan) = 42.6% (no 29% como si fueran independientes).
 "Equipo anota" con ambos anotan ya incluido es 100% redundante. El modelo (matriz de marcadores) reproduce el 0.80 de ambos anotan | más de 2.5.
 Regla en la calculadora: una selección del mismo partido conviene solo si Draftea sube el momio del SGP al menos ×(1/factor condicional).
+Datos reales: P(visita anota | más de 2.5 y local anota) = 85.8% (5,695 partidos). Lo que la tumba: 3-0 (7.8%), 4-0 (4.0%), 5-0 (1.5%). Modelo con goles esperados 1.4–1.6: 93.6%; 1.3–1.0: 86%.

@@ -58,9 +58,13 @@
     let p = ord[0].p, fns = [defs[idOf(ord[0])]];
     steps.push({ leg: ord[0], factor: ord[0].p });
     for (const l of ord.slice(1)) {
-      const before = P(fns); fns = [...fns, defs[idOf(l)]];
+      const prev = fns, before = P(fns); fns = [...fns, defs[idOf(l)]];
       const f = before > 0 ? P(fns) / before : 0;
-      p *= f; steps.push({ leg: l, factor: f });
+      // Marcadores que cumplen lo anterior pero tumban esta selección (los que la hacen riesgosa).
+      const fn = defs[idOf(l)], kill = [];
+      for (let h = 0; h < mat.length; h++) for (let a = 0; a < mat[h].length; a++) if (prev.every(g => g(h, a)) && !fn(h, a)) kill.push({ h, a, p: before > 0 ? mat[h][a] / before : 0 });
+      kill.sort((x, y) => y.p - x.p);
+      p *= f; steps.push({ leg: l, factor: f, kill: kill.slice(0, 3) });
     }
     for (const l of other) p *= l.p || 0; // córners, tarjetas…: sin modelo conjunto, se multiplican
     return { p, steps, other, fns, mat, P, lam };
@@ -186,9 +190,10 @@
       const rows = gi.steps.slice(1).map(s => {
         const need = s.factor > 0 ? 1 / s.factor : Infinity;
         const tag = s.factor >= 0.97 ? '<span class="st ok">no agrega riesgo</span>' : s.factor >= 0.85 ? '<span class="st lean">poco riesgo</span>' : '<span class="st vol">riesgo real</span>';
+        const kill = s.kill && s.kill.length && s.factor < 0.97 ? ` La tumban: ${s.kill.map(k => `${k.h}-${k.a} (${pct(k.p)})`).join(', ')}.` : '';
         return s.factor >= 0.97
-          ? `<li><b>${esc(s.leg.label)}</b>: ${tag} (×${s.factor.toFixed(2)}). Si ya se cumple lo demás, esta casi siempre se cumple: lo que Draftea le sume al momio es ganancia.</li>`
-          : `<li><b>${esc(s.leg.label)}</b>: la prob. se multiplica por ${s.factor.toFixed(2)} ${tag}. Conviene solo si Draftea sube el momio del SGP al menos <b>×${need.toFixed(2)}</b> al agregarla.</li>`;
+          ? `<li><b>${esc(s.leg.label)}</b>: ${tag} (se cumple ${pct(s.factor)} de las veces si pasa lo anterior). Lo que Draftea le sume al momio es ganancia.</li>`
+          : `<li><b>${esc(s.leg.label)}</b>: si pasa lo anterior, se cumple ${pct(s.factor)} de las veces ${tag}.${kill} Conviene solo si Draftea sube el momio del SGP al menos <b>×${need.toFixed(2)}</b> al agregarla.</li>`;
       }).join('');
       // Agregados casi gratis: mercados del mismo partido que pasan ≥ 95% de las veces dado lo que ya llevas.
       const pool = POOL.get(mk), defs = DEFS(), have = new Set(g.map(l => l.key));
@@ -198,7 +203,7 @@
         .filter(o => o.f >= 0.95 && o.x.p < 0.97).sort((a, b) => a.x.p - b.x.p).slice(0, 3) : [];
       const freeHtml = free.length ? `<p class="m">Casi gratis con lo que ya llevas (pasan ≥ 95% de las veces si se cumple lo demás): ${free.map(o => `${esc(o.x.label)} (×${o.f.toFixed(2)}) ${window.RadarSlipBtn ? window.RadarSlipBtn({ ...o.x, matchKey: mk, match: g[0].match }) : ''}`).join(' · ')}</p>` : '';
       html += `<div class="sgp"><b>Mismo partido: ${esc(g[0].match)}</b>
-        <p class="m">Juntas: <b>${pct(gi.p)}</b> (si fueran independientes saldría ${pct(indep)}; están ligadas)</p>
+        <p class="m">Goles esperados: ${esc(String(g[0].match).split(' vs ')[0] || 'local')} ${gi.lam[0].toFixed(2)} · ${esc(String(g[0].match).split(' vs ')[1] || 'visita')} ${gi.lam[1].toFixed(2)}. Juntas: <b>${pct(gi.p)}</b> (si fueran independientes saldría ${pct(indep)}; están ligadas)</p>
         ${rows ? `<ul>${rows}</ul>` : ''}${gi.other.length ? `<p class="m">${gi.other.length} selección(es) de córners/tarjetas se calculan aparte.</p>` : ''}${freeHtml}</div>`;
     }
     return html;
