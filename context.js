@@ -4,6 +4,8 @@
 
   // Reglas por liga: partidos por equipo, líneas de corte (posición máxima que entra) y zona de descenso.
   const RULES = {
+    // J1 2026-27: otoño-primavera, 20 equipos, 38 jornadas.
+    'jpn.1': { games: 38, lines: [{ pos: 1, name: 'título' }], releg: 3 },
     'mex.w.1': { games: 17, lines: [{ pos: 8, name: 'liguilla' }], releg: 0 },
     // Apertura 2026 (año de Mundial): sin play-in, los 8 primeros van directo a cuartos.
     'mex.1': { games: 17, lines: [{ pos: 8, name: 'cuartos de final' }], releg: 0 },

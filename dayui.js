@@ -6,10 +6,10 @@
   const f2 = x => (x == null || !isFinite(x)) ? '-' : x.toFixed(2);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const SOCCER = D.LEAGUES.map(l => l.id);
-  const MAIN = ['mex.1', 'col.1', 'uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1'];
+  const MAIN = ['mex.1', 'col.1', 'jpn.1', 'uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1'];
 
   // Ligas que Draftea MX suele ofrecer. No hay lista pública: es una lista conservadora y Roberto la ajusta en la página.
-  const DFT_DEFAULT = ['mex.1', 'col.1', 'mex.w.1', 'uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ned.1', 'por.1', 'eng.w.1', 'usa.nwsl', 'uefa.wchampions', 'nba', 'nfl'];
+  const DFT_DEFAULT = ['mex.1', 'col.1', 'jpn.1', 'mex.w.1', 'uefa.champions', 'uefa.europa', 'eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'ned.1', 'por.1', 'eng.w.1', 'usa.nwsl', 'uefa.wchampions', 'nba', 'nfl'];
   const DKEY = 'radar.dft';
   function loadDft() {
     const all = [...D.LEAGUES.map(l => l.id), 'nba', 'nfl'];
