@@ -147,6 +147,7 @@
         <span>Valor esperado</span><b class="num ${P.ev >= 0 ? 'good' : 'bad'}">${P.ready ? sign(P.ev) : '-'}</b><b class="num ${evCls}">${R.ready ? sign(R.ev) : '-'}</b>
       </div>
       <div class="evbig ${R.ready ? evCls : ''}"><span>Valor esperado (con Draftea)</span><b class="num">${R.ready ? sign(R.ev) : '-'}</b><span class="m">${R.ready ? (R.ev >= 0 ? 'a la larga este ticket gana dinero' : 'a la larga este ticket pierde dinero') : 'faltan momios'}</span></div>
+      <details class="fold" ${window.__slipMore ? 'open' : ''} ontoggle="window.__slipMore=this.open"><summary>Más números <span class="m">prob ${pct(c.p)} · pega 1 de cada ${c.p > 0 ? Math.round(1 / c.p).toLocaleString('es-MX') : '∞'}</span></summary>
       <div class="sgrid one">
         <span>Prob. del modelo de acertar todo</span><b class="num">${pct(c.p)}</b>
         <span>Prob. promedio por selección</span><b class="num">${pct(c.avgP)}</b>
@@ -155,7 +156,7 @@
         ${c.weakest ? `<span>Sin la más débil (${esc(c.weakest.label)})</span><b class="num">${pct(c.pNoWeak)}</b>` : ''}
         <span>Momio justo según el modelo</span><b class="num">${c.fair ? c.fair.toFixed(2) : '-'}</b>
       </div>
-      <p class="note">"Con Draftea" usa tu momio donde lo escribiste y el provisional en el resto (${c.withDft} de ${S.legs.length} con Draftea). ${R.ready ? (R.ev >= 0 ? `En promedio ganarías ${money(R.ev)} por ticket a la larga.` : `En promedio pierdes ${money(-R.ev)} por ticket a la larga: la casa paga menos de lo que vale.`) : ''} Pega 1 de cada ${c.p > 0 ? Math.round(1 / c.p).toLocaleString('es-MX') : '∞'} veces.</p>
+      <p class="note">"Con Draftea" usa tu momio donde lo escribiste y el provisional en el resto (${c.withDft} de ${S.legs.length} con Draftea). ${R.ready ? (R.ev >= 0 ? `En promedio ganarías ${money(R.ev)} por ticket a la larga.` : `En promedio pierdes ${money(-R.ev)} por ticket a la larga: la casa paga menos de lo que vale.`) : ''} Pega 1 de cada ${c.p > 0 ? Math.round(1 / c.p).toLocaleString('es-MX') : '∞'} veces.</p></details>
       ${sgpHtml()}
       ${warn.length ? `<div class="warnbox">${warn.map(esc).join('<br>')}</div>` : ''}
       ${optHtml()}

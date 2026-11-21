@@ -253,6 +253,7 @@
     } else html += '<p class="note">Ningún partido de este día pasa los filtros. Mejor no apostar.</p>';
     html += '</div>';
 
+    html += '<div class="tools">';
     // Parlay soñador: entrada chica, premio grande, con la probabilidad real a la vista.
     html += fold('Parlay soñador <span class="m">entrada chica, premio grande</span>', `
       <div class="opth">
@@ -272,7 +273,8 @@
         <span style="text-align:right"><b class="num">${f2(x.leg.odd)}</b><br><span class="m">prob ${pct(x.leg.p)} · valor ${f2(x.leg.ev)}</span></span>${btn(x)}</div>`).join(''));
     }
 
-    if (r.matches.length) html += '<h3>Por empezar · por hora de México</h3>';
+    html += '</div>';
+    if (r.matches.length) html += '<h3>Por empezar · por hora de México</h3><div class="dgrid">';
     for (const m of [...r.matches].sort(byTime)) {
       const w = m.winner;
       const right = w ? `<b class="num">${pct(w.p)}</b>` : '<span class="m">sin datos</span>';
@@ -287,6 +289,7 @@
         <span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br><span class="m">${sub}</span>${motLine(m)}</span><span style="text-align:right">${right}</span></button>
         ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}</div>`;
     }
+    if (r.matches.length) html += '</div>';
     if ((r.live || []).length) {
       html += '<h3>En juego (fuera del ticket)</h3>' + [...r.live].sort(byTime).map(m => `<div class="dm" style="cursor:default"><span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)} · ${esc(m.ev.detail || 'en juego')}</span></span><span class="num">${m.ev.hs ?? '-'}-${m.ev.as ?? '-'}</span></div>`).join('');
     }

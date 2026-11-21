@@ -234,6 +234,23 @@ section.card>details.sec[open]{display:flex;flex-direction:column;gap:12px}
 .dlegs{display:flex;flex-direction:column;gap:6px}
 .warnbox{background:var(--warn-soft);color:var(--warn);padding:8px 10px;border-radius:10px;font-size:12px}
 .money{display:inline-flex;align-items:center;gap:4px;font-weight:600}
+.rgrid{display:flex;flex-direction:column;gap:14px}
+.colL,.colR{display:flex;flex-direction:column;gap:18px;min-width:0}
+.tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.tools>details[open]{grid-column:1/-1}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.dgrid .dmw{background:var(--sub);border-radius:12px;border:1px solid var(--line);overflow:hidden}
+.dgrid .dmw .dm{border-radius:0;background:none}
+.dgrid .mkpanel{padding:0 10px 10px}
+.dgrid .dmw:has(.mkpanel:not(.hidden)){grid-column:1/-1}
+@media (min-width:1000px){
+  .wrap{max-width:1280px;display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:22px;align-items:start}
+  .wrap>.top,.wrap>.foot{grid-column:1/-1}
+  .colR{position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto;scrollbar-width:thin;padding-bottom:4px}
+  .slipbar{display:none !important}
+  #result .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  #result .rgrid>section:has(details[open]){grid-column:1/-1}
+}
 .slipbar{position:fixed;left:50%;transform:translateX(-50%);bottom:max(12px,env(safe-area-inset-bottom,0px));width:min(568px,calc(100% - 32px));display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:11px 14px;border-radius:14px;border:1px solid var(--accent);background:var(--card);color:var(--fg);font-size:12.5px;box-shadow:0 10px 30px rgb(0 0 0/.45);cursor:pointer;z-index:10;text-align:left}
 .slipbar b{color:var(--accent)}
 .leg{grid-template-columns:1fr auto auto !important}
@@ -275,11 +292,12 @@ td.addc{width:34px;padding-left:6px}
     <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--on-accent)" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="var(--on-accent)"/></svg>
     Radar de picks
   </h1>
-    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-k</span>
+    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-l</span>
       <button class="btn sm" id="refresh">Actualizar</button>
       <button class="icon" id="theme" aria-label="Cambiar tema claro u oscuro">☀︎</button></div>
   </div>
 
+<main class="colL">
   <section class="card search" aria-label="Buscar partido">
     <div class="row">
       <select class="in" id="league" aria-label="Liga"></select>
@@ -346,6 +364,7 @@ td.addc{width:34px;padding-left:6px}
       <p class="note" title="Resultado y goles 2.5 también ajustan el modelo con la casa sin margen.">Barra = probabilidad; marca = lo que pide el momio para no perder. "Peor" = si los goles esperados se mueven ±15%.</p>
     </section>
 
+    <div class="rgrid">
     <section class="card" aria-label="Forma">
       <details class="sec"><summary>Forma y entre ellos <small>últimos 5</small></summary>
       <div class="form" id="form"></div>
@@ -380,8 +399,11 @@ td.addc{width:34px;padding-left:6px}
       </details>
       </details>
     </section>
+    </div>
   </div>
 
+</main>
+<aside class="colR" aria-label="Calculadora y tickets">
   <section class="card" id="slip" aria-label="Calculadora de ticket">
     <h2>Calculadora de ticket <small>monto + selecciones → lo que ganarías</small></h2>
     <label class="bj">Monto a apostar <span class="money"><span>$</span><input class="in" id="slipstake" inputmode="decimal" type="number" min="0" step="1" value="10" style="width:110px"></span></label>
@@ -405,19 +427,20 @@ td.addc{width:34px;padding-left:6px}
     <p class="note">Para pasarlos entre celular y PC: "Exportar archivo" en uno y "Importar archivo" en el otro.</p>
   </section>
 
+</aside>
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
 </div>
 <button class="slipbar hidden" id="slipbar" aria-label="Ver ticket"></button>
-<script src="model.js?v=20261121k"></script>
-<script src="context.js?v=20261121k"></script>
-<script src="data.js?v=20261121k"></script>
-<script src="app.js?v=20261121k"></script>
-<script src="day.js?v=20261121k"></script>
-<script src="props.js?v=20261121k"></script>
-<script src="reading.js?v=20261121k"></script>
-<script src="dayui.js?v=20261121k"></script>
-<script src="optimize.js?v=20261121k"></script>
-<script src="slip.js?v=20261121k"></script>
-<script src="saved.js?v=20261121k"></script>
+<script src="model.js?v=20261121l"></script>
+<script src="context.js?v=20261121l"></script>
+<script src="data.js?v=20261121l"></script>
+<script src="app.js?v=20261121l"></script>
+<script src="day.js?v=20261121l"></script>
+<script src="props.js?v=20261121l"></script>
+<script src="reading.js?v=20261121l"></script>
+<script src="dayui.js?v=20261121l"></script>
+<script src="optimize.js?v=20261121l"></script>
+<script src="slip.js?v=20261121l"></script>
+<script src="saved.js?v=20261121l"></script>
 </body>
 </html>
