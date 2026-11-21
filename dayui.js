@@ -187,6 +187,40 @@
   }
   let DMODE = 'normal';
   let LADMIN = 1.30, LADP = 0.40, LAST = null, LASTREQ = null;
+  // Ticket de N selecciones (para boosts): 0 = automático (el de siempre).
+  const NPICK = { n: 0, per: 1, minOdd: 1.20, boost: 0 };
+  function buildNPick() {
+    const box = $('npick'), auto = $('tkauto'); if (!box || !LAST) return;
+    NPICK.n = +$('npn').value || 0; NPICK.per = +$('npper').value || 1; NPICK.minOdd = +$('npodd').value || 1.20; NPICK.boost = Math.max(0, +$('npboost').value || 0);
+    if (auto) auto.classList.toggle('hidden', NPICK.n > 0);
+    if (!NPICK.n) { box.innerHTML = ''; return; }
+    const open = window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set();
+    const all = LAST.matches.filter(m => !m.us), ms = all.filter(m => !open.has(`${m.lg}:${m.ev.homeId}:${m.ev.awayId}`));
+    const skipped = all.length - ms.length;
+    const t = Y.pickN(ms, NPICK.n, { minP: 0.65, perMatch: NPICK.per, minOdd: NPICK.minOdd });
+    if (!t) { box.innerHTML = `<p class="note">Ninguna selección de 65%+ con momio ≥ ${f2(NPICK.minOdd)}. Baja el momio mínimo o sube "por partido".</p>`; return; }
+    const bo = Y.boosted(t.odd, NPICK.boost), ev = t.p * bo - 1;
+    const MO = window.RadarMoney, bank = (() => { try { return +localStorage.getItem('radar.bank') || 0; } catch (e) { return 0; } })();
+    const sg = MO && bank ? MO.suggestStake({ bank, p: t.p, odd: bo }) : null;
+    const safe = MO && MO.isSafe(t.p);
+    box.innerHTML = `<div class="tk">${!t.reached ? `<p class="note"><b>Solo alcanzan ${t.n} de ${NPICK.n}.</b> Sube "por partido", baja el momio mínimo o prueba otra fecha.</p>` : ''}
+      <h3>Ticket de ${t.n} selecciones · ${t.matches} partidos ${safe ? '<span class="st ok">safe</span>' : ''}</h3>
+      ${[...t.legs].sort((a, b) => byTime(a.match, b.match)).map(x => `<div class="leg"><span>${hr(x.match.ev.date)} <b>${esc(x.leg.label)}</b>${x.leg.prop ? ' <span class="st lean">conteo · estimado</span>' : ''}<br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)}</span></span>
+        <span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'aprox ' + f2(x.leg.est)}</span></span>${btn(x)}</div>`).join('')}
+      <div class="rpgs"><span></span><span></span><span></span>
+        <span>Prob. de acertar todo</span><span></span><b class="num">${pct(t.p)} <span class="m">1 de cada ${Math.max(1, Math.round(1 / t.p)).toLocaleString('es-MX')}</span></b>
+        <span>Momio</span><span></span><b class="num">${f2(t.odd)}${NPICK.boost ? ` → ${f2(bo)} <span class="m">con boost ${NPICK.boost}%</span>` : ''}</b>
+        <span>Valor esperado</span><span></span><b class="num ${ev >= 0 ? 'good' : 'bad'}">${ev >= 0 ? '+' : ''}${Math.round(ev * 100)}%</b>
+        <span>Monto sugerido</span><span></span><b class="num">${sg ? '$' + sg.amount : '<span class="m">escribe tu saldo en la calculadora</span>'}</b></div>
+      <button class="btn ghost sm" id="npadd">Pasar a la calculadora</button>
+      <p class="note">La combinación más probable de ${NPICK.n} selecciones de 65%+ con momio ≥ ${f2(NPICK.minOdd)}${NPICK.per > 1 ? `, hasta ${NPICK.per} por partido sin ir en contra entre sí` : ', una por partido'}.${skipped ? ` Sin ${skipped} partido(s) que ya están en tickets abiertos.` : ''}${t.real < t.legs.length ? ' Momios aprox.: revisa en Draftea.' : ''}${t.matches < t.legs.length ? ' En selecciones del mismo partido Draftea baja el momio (SGP): usa el que te dé Draftea en la calculadora.' : ''}${ev < 0 ? ' Valor esperado negativo: con estos momios no conviene.' : ''}</p></div>`;
+    $('npadd').addEventListener('click', () => {
+      for (const x of t.legs) { const l = legOf(x); if (!window.RadarSlip.has(l.key)) window.RadarSlip.add(l); }
+      if (sg && sg.amount && window.RadarSlip.setStake) window.RadarSlip.setStake(sg.amount);
+      $('slip').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    if (window.RadarSlip) window.RadarSlip.refresh();
+  }
   const DREAM = { stake: 5, target: 30000, days: 3, minP: 0.65, per: 2, extra: [] };
   async function buildDream() {
     const date = LASTREQ && LASTREQ.date;
@@ -338,6 +372,12 @@
         <label class="m">Por partido <select class="in sm" id="drper">${[1, 2].map(x => `<option value="${x}" ${x === DREAM.per ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
         <button class="btn sm" id="drgo">Armar</button></div>
       <div id="dream"></div>`;
+    if (DMODE !== 'dream') html += `<div class="opth npform">
+        <label class="m">Selecciones <select class="in sm" id="npn"><option value="0">auto</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(x => `<option value="${x}" ${x === NPICK.n ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+        <label class="m">Por partido <select class="in sm" id="npper">${[[1, '1 (varios partidos)'], [2, 'hasta 2'], [3, 'hasta 3 (pocos partidos)']].map(([v, l]) => `<option value="${v}" ${v === NPICK.per ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label class="m">Momio mín. <select class="in sm" id="npodd">${[1.10, 1.20, 1.30].map(x => `<option value="${x}" ${x === NPICK.minOdd ? 'selected' : ''}>${x.toFixed(2)}</option>`).join('')}</select></label>
+        <label class="m">Boost % <input class="in sm" id="npboost" type="number" min="0" step="5" value="${NPICK.boost || ''}" placeholder="0" style="width:64px"></label></div>
+      <div id="npick"></div><div id="tkauto">`;
     if (DMODE === 'dream') html += `<div class="dreamtop"><h3>Pronóstico soñador · entrada chica, premio grande</h3>${dreamForm}</div>`;
     html += DMODE === 'dream' ? `<details class="tk fold"><summary>Ticket sugerido <span class="m">${t.legs.length} selecciones · prob ${pct(t.p)}</span></summary>` : `<div class="tk"><h3>Ticket sugerido · ${t.legs.length} selecciones · solo partidos por empezar</h3>`;
     if (t.legs.length) {
@@ -347,7 +387,7 @@
       html += `<div class="sum"><span>Prob. de acertar todo: <b class="num">${pct(t.p)}</b></span><span>Momio total aprox.: <b class="num">${f2(t.odd)}</b></span></div>
         <p class="note">Prob ≥ ${Math.round(R.MIN_P * 100)}%, momio ≥ 1.30, sin volados. "Pide ≥": si Draftea da menos, quítala.</p>`;
     } else html += '<p class="note">Ningún partido de este día pasa los filtros. Mejor no apostar.</p>';
-    html += DMODE === 'dream' ? '</details>' : '</div>';
+    html += DMODE === 'dream' ? '</details>' : '</div></div>';
 
     html += '<div class="tools">';
     // Mejor momio para tu riesgo: ranking de combinaciones con prob. total mínima.
@@ -402,6 +442,9 @@
     const lp = $('ladp'); if (lp) lp.addEventListener('change', () => { LADP = +lp.value; renderLadder(); });
     const dg = $('drgo'); if (dg) dg.addEventListener('click', () => buildDream());
     if (DMODE === 'dream') buildDream();
+    ['npn', 'npper', 'npodd'].forEach(id => { const e = $(id); if (e) e.addEventListener('change', buildNPick); });
+    const nb = $('npboost'); if (nb) nb.addEventListener('input', buildNPick);
+    if (DMODE !== 'dream') buildNPick();
     const all = $('addall');
     if (all) all.addEventListener('click', () => {
       for (const x of t.legs) { const l = legOf(x); if (!window.RadarSlip.has(l.key)) window.RadarSlip.add(l); }

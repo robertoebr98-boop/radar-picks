@@ -286,6 +286,18 @@ t('safe: 70%+ del modelo, tope 10% y récord propio', () => {
   assert.strictEqual(MO.calibration(tk, ['regular', 'safe']).total.n, 2);
   assert.strictEqual(MO.calibration(tk).total.n, 1);
 });
+t('ticket de N selecciones para boosts: exacto, más probable y con boost', () => {
+  const Y = require('../day.js');
+  const res = { lh: 1.6, la: 1.0 };
+  const mk = (i, ps) => ({ lg: 'x', ev: { homeId: 'h' + i, awayId: 'a' + i, date: '2026-11-22T18:00Z' }, res, legs: ps.map(([id, p, odd]) => ({ id, label: id, p, odd, est: odd, tag: 'mercado' })) });
+  const ms = Array.from({ length: 12 }, (_, i) => mk(i, [['1X', 0.80 + i * 0.01, 1.22], ['U3.5', 0.75, 1.25], ['X', 0.25, 3.4]]));
+  const t = Y.pickN(ms, 10, { perMatch: 1 });
+  assert(t.reached && t.legs.length === 10 && t.matches === 10 && t.legs.every(x => x.leg.p >= 0.65 && x.leg.odd >= 1.2));
+  assert(t.legs.every(x => x.leg.id === '1X') && t.minLeg >= 0.82 - 1e-9); // las 10 más probables
+  const few = Y.pickN(ms.slice(0, 3), 6, { perMatch: 3 });
+  assert(few && few.matches <= 3 && few.legs.length <= 6);
+  assert.strictEqual(+Y.boosted(3, 80).toFixed(2), 4.6);
+});
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
   OP._useMemory({});

@@ -340,7 +340,59 @@
     return { legs, p, odd, ev: p * odd - 1, real: legs.filter(x => x.leg.odd).length, reached, minLeg: Math.min(...legs.map(x => x.leg.p)), matches: best.picks.length };
   }
 
-  const api = { PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
+  // Ticket de N selecciones exactas (para boosts tipo "parlay de 10 selecciones +80%"): la combinación MÁS PROBABLE.
+  // perMatch 1 = un partido por selección; 2–3 = pocos partidos con varias selecciones (SGP, prob. conjunta con la matriz).
+  function pickN(matches, n, opts = {}) {
+    const minP = opts.minP ?? 0.65, perMatch = opts.perMatch ?? 1, minOdd = opts.minOdd ?? 1.20;
+    const defs = {}; for (const d of M.marketDefs('L', 'V')) defs[d.id] = d.fn;
+    const groupOf = l => l.group || (l.prop ? 'Conteo' : ({ '1': 'R', 'X': 'R', '2': 'R', '1X': 'R', 'X2': 'R', '12': 'R' }[l.id] || (/^(1|2|1X|X2|12)&/.test(l.id) ? 'R' : 'Goles')));
+    const per = [];
+    for (const m of matches) {
+      const ok = (m.legs || []).filter(l => l.p >= minP && (l.odd || l.est) >= minOdd && l.tag !== 'volado').sort((a, b) => b.p - a.p).slice(0, 8);
+      if (!ok.length) continue;
+      const mat = m.res && M.scoreMatrix ? M.scoreMatrix(m.res.lh, m.res.la) : null;
+      const joint = legs => {
+        const g = legs.filter(l => defs[l.id]), o = legs.filter(l => !defs[l.id]);
+        let pg = 1;
+        if (g.length > 1 && mat) pg = M.sumWhere(mat, (h, x) => g.every(l => defs[l.id](h, x)));
+        else if (g.length === 1) pg = g[0].p;
+        return o.reduce((a, l) => a * l.p, pg);
+      };
+      const os = ok.map(l => ({ legs: [l], p: l.p }));
+      const sub = (start, cur) => {
+        if (cur.length >= 2) {
+          const p = joint(cur), ind = cur.reduce((a, l) => a * l.p, 1);
+          if (p < ind * 0.98) return; // van en contra entre sí
+          os.push({ legs: [...cur], p: Math.min(p, ...cur.map(l => l.p)) });
+        }
+        if (cur.length >= perMatch) return;
+        for (let i = start; i < ok.length; i++) {
+          if (cur.some(l => groupOf(l) === groupOf(ok[i]))) continue;
+          sub(i + 1, [...cur, ok[i]]);
+        }
+      };
+      if (perMatch >= 2) sub(0, []);
+      per.push(os.map(o => ({ ...o, match: m, odd: o.legs.reduce((a, l) => a * (l.odd || l.est), 1), lp: Math.log(o.p) })));
+    }
+    // dp[k] = combinación más probable con k selecciones.
+    let dp = new Array(n + 1).fill(null); dp[0] = { lp: 0, picks: [] };
+    for (const os of per) {
+      const nx = dp.slice();
+      for (let k = 0; k < n; k++) { const cur = dp[k]; if (!cur) continue;
+        for (const o of os) { const kk = k + o.legs.length; if (kk > n) continue; const lp = cur.lp + o.lp; if (!nx[kk] || nx[kk].lp < lp) nx[kk] = { lp, picks: [...cur.picks, o] }; } }
+      dp = nx;
+    }
+    let k = n; while (k > 0 && !dp[k]) k--;
+    if (!k) return null;
+    const best = dp[k];
+    const legs = best.picks.flatMap(o => o.legs.map(l => ({ match: o.match, leg: l })));
+    const p = Math.exp(best.lp), odd = best.picks.reduce((a, o) => a * o.odd, 1);
+    return { legs, p, odd, reached: k === n, n: k, real: legs.filter(x => x.leg.odd).length, minLeg: Math.min(...legs.map(x => x.leg.p)), matches: best.picks.length };
+  }
+  // Boost de Draftea: sube la ganancia (no la entrada) en ese %.
+  const boosted = (odd, b) => 1 + (odd - 1) * (1 + (b || 0) / 100);
+
+  const api = { pickN, boosted, PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarDay = api;
 })(typeof window !== 'undefined' ? window : globalThis);
