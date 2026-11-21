@@ -142,3 +142,18 @@ Goles que faltan = goles esperados × fracción restante (1er tiempo 44.8% de lo
 Por grupo, todo dentro de ~2 puntos. Sin el ajuste por marcador, Resultado y Doble oportunidad salían 2–6 puntos confiados de más.
 Combinados quedan fuera en la página: en vivo repiten otra selección (doble exposición).
 Límite: solo se valida el minuto 45; otros minutos usan la misma curva. Rojas: −30% al que se queda con 10, +25% al rival (no validado, pocos casos en CSV).
+
+## Córners y tarjetas: ventana por equipo — 21-nov-2026
+
+Tras perder T12/T14 se probaron 9 variantes (`exp_props`, 3 temporadas × 5 ligas, ~27,800 predicciones, líneas 8.5–10.5 córners y 3.5–4.5 tarjetas):
+
+| Variante | Brier | Picks 70–90% córners (dijo → pasó) | Tarjetas |
+|---|---|---|---|
+| Antes: últimos 35 días | 0.2397 | 73.5 → 68.9 | 75.5 → 70.6 |
+| Temporada (~120 días) | 0.2359 (−1.6%) | 72.5 → 73.0 | 74.9 → 73.5 |
+| Temporada + disp. córners 1.6 / tarjetas 1.3 (**activo**) | ≈0.2356 | 72.8 → 72.9 | 74.4 → 75.1 |
+| Separar local/visita por equipo | peor (−0.7% vs −1.6%) | 73.3 → 68.9 | — |
+| Dispersión distinta por liga | igual que una sola | — | — |
+
+Conclusión: el modelo ya usaba promedios por equipo; el problema era que 5 semanas son ~5 partidos por equipo (ruido) y los picks salían 4–5 puntos confiados de más.
+Separar local/visita o dar dispersión por liga no ayuda (el estilo de cada liga ya entra por su promedio).

@@ -1,11 +1,14 @@
 // Mercados extra por partido: córners, remates, remates a puerta y tarjetas.
-// Datos: calendario de ESPN de las últimas 5 semanas (gratis). Modelo: binomial negativa.
+// Datos: calendario de ESPN de los últimos ~4 meses (gratis). Modelo: binomial negativa.
 (function (root) {
   'use strict';
   const D = root.RadarData || (typeof require !== 'undefined' ? require('./data.js') : null);
 
   // Varianza / media dentro de un partido, calibrada con backtest/props-backtest.js (3,800 partidos, 2023-2025).
-  const DISP = { corners: 1.8, shots: 1.3, sot: 1.2, cards: 1.2 };
+  // 21-nov: con la ventana de temporada, córners 1.6 y tarjetas 1.3 dan mejor Brier (backtest/props-backtest.js, 3 temporadas).
+  const DISP = { corners: 1.6, shots: 1.3, sot: 1.2, cards: 1.3 };
+  // Ventana de historia por equipo: ~la temporada (antes 35 días; 5 semanas = pocos partidos por equipo → picks 4–5 pts confiados de más).
+  const HIST_DAYS = 120;
   // Tarjetas promedio por partido (amarillas + rojas). ESPN no da tarjetas por partido en el calendario.
   const CARDS_AVG = { 'eng.1': 4.3, 'esp.1': 4.8, 'ita.1': 4.3, 'ger.1': 4.2, 'fra.1': 4.0, 'mex.1': 4.8, 'ned.1': 3.9, 'por.1': 4.9 };
   const HOME = 1.06, AWAY = 0.94, K = 3;
@@ -80,14 +83,14 @@
     return out;
   }
 
-  // Calendario de las últimas 5 semanas de una liga (una vez por liga; días pasados se cachean 6 h en el servidor).
+  // Calendario de los últimos ~4 meses de una liga (una vez por liga; días pasados se cachean 6 h en el servidor).
   const cache = new Map();
-  function leagueHistory(lg, days = 35) {
+  function leagueHistory(lg, days = HIST_DAYS) {
     if (cache.has(lg)) return cache.get(lg);
     const p = (async () => {
       const now = Date.now(), dates = [];
       for (let i = 1; i <= days; i++) dates.push(new Date(now - i * 864e5).toISOString());
-      const evs = await D.matchStatsFull(lg, dates);
+      const evs = await D.matchStatsFull(lg, dates, days + 5);
       return teamAverages(evs);
     })();
     cache.set(lg, p);
@@ -96,14 +99,14 @@
   }
 
   // Autovalidación gratis para ligas fuera del backtest (Liga MX, J1…): con los últimos ~150 días de ESPN,
-  // predice cada partido con las 5 semanas anteriores (igual que la página) y compara lo que dijo con lo que pasó.
+  // predice cada partido con los ~4 meses anteriores (igual que la página) y compara lo que dijo con lo que pasó.
   const bucket = p => p >= 0.8 ? '80%+' : p >= 0.7 ? '70–80%' : p >= 0.6 ? '60–70%' : null;
   function evaluate(evs, lg) {
     evs = [...evs].sort((a, b) => new Date(a.date) - new Date(b.date));
     const G = { 'Córners': { B: {}, matches: 0 }, 'Tarjetas': { B: {}, matches: 0 } };
     for (const m of evs) {
       const t = new Date(m.date).getTime();
-      const hist = evs.filter(x => { const u = new Date(x.date).getTime(); return u < t && u >= t - 35 * 864e5; });
+      const hist = evs.filter(x => { const u = new Date(x.date).getTime(); return u < t && u >= t - HIST_DAYS * 864e5; });
       if (hist.length < 10) continue;
       const mk = markets(m, teamAverages(hist), lg, 'L', 'V');
       const H = m.stats.home, A = m.stats.away;
@@ -146,7 +149,7 @@
     return p;
   }
 
-  const api = { evaluate, selfCheck, cachedCheck, DISP, CARDS_AVG, PROP_MARGIN, overProb, teamAverages, expCount, markets, leagueHistory };
+  const api = { HIST_DAYS, evaluate, selfCheck, cachedCheck, DISP, CARDS_AVG, PROP_MARGIN, overProb, teamAverages, expCount, markets, leagueHistory };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarProps = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1,10 +1,10 @@
 // Calibración de córners, remates, remates a puerta y tarjetas con datos reales (mismos CSV que backtest.js).
-// Cada partido se predice con los partidos de las 5 semanas anteriores de su liga (igual que la página).
+// Cada partido se predice con los partidos de los ~4 meses anteriores de su liga en la temporada (igual que la página).
 const fs = require('fs'), path = require('path');
 const P = require('../props.js');
 const dir = process.argv[2] || path.join(__dirname, 'data');
 const LG = { 'premier-league': 'eng.1', 'la-liga': 'esp.1', 'serie-a': 'ita.1', 'bundesliga': 'ger.1', 'ligue-1': 'fra.1' };
-const files = fs.readdirSync(dir).filter(f => /-(2324|2425)\.csv$/.test(f));
+const files = fs.readdirSync(dir).filter(f => /-(2223|2324|2425)\.csv$/.test(f));
 const B = {};
 const bucket = p => p >= 0.8 ? '0.80+' : p >= 0.7 ? '0.70-0.80' : p >= 0.6 ? '0.60-0.70' : null;
 for (const f of files) {
@@ -17,7 +17,7 @@ for (const f of files) {
     cards: +r.HY + +r.AY + +r.HR + +r.AR,
   }));
   for (const m of ms) {
-    const hist = ms.filter(x => x.date < m.date && x.date >= m.date - 35 * 864e5);
+    const hist = ms.filter(x => x.date < m.date && x.date >= m.date - P.HIST_DAYS * 864e5);
     const avgs = P.teamAverages(hist);
     const mk = P.markets(m, avgs, lg, 'L', 'V');
     const H = m.stats.home, A = m.stats.away;
