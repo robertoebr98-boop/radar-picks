@@ -231,6 +231,14 @@ t('córners y tarjetas entran al ticket solo como selección estimada de ligas v
   assert(L.length && L.every(l => l.prop && l.odd === null && /Córners|Tarjetas/.test(l.group) && l.worst < l.p));
   assert(Yd.PROP_LGS.includes('eng.1') && !Yd.PROP_LGS.includes('mex.1'));
 });
+t('autovalidación de córners/tarjetas: tarjetas desde la lista de jugadas y veredicto por grupo', () => {
+  const Dd = require('../data.js');
+  const ev = Dd.parseEvent({ id: '1', date: '2026-11-01T02:00Z', competitions: [{ status: { type: { completed: true, state: 'post' } }, competitors: [{ homeAway: 'home', id: '10', team: { id: '10' }, score: '1', statistics: [] }, { homeAway: 'away', id: '20', team: { id: '20' }, score: '0', statistics: [] }], details: [{ yellowCard: true, team: { id: '10' } }, { yellowCard: true, team: { id: '20' } }, { redCard: true, team: { id: '20' } }, { scoringPlay: true, team: { id: '10' } }] }] });
+  assert.deepStrictEqual(ev.cards, { home: 1, away: 2 });
+  const P = require('../props.js');
+  const r = P.evaluate([], 'mex.1');
+  assert(r['Córners'].ok === false && r['Tarjetas'].matches === 0);
+});
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
   OP._useMemory({});

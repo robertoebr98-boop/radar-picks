@@ -210,6 +210,11 @@
         for (const x of props) rows.push({ id: x.id, group: x.group, label: x.label, p: x.p, prov: x.fair / window.RadarProps.PROP_MARGIN, src: 'estimado' });
         if (props.expected) note = `Esperado: ${props.expected.corners.toFixed(1)} córners · ${props.expected.shots.toFixed(0)} remates · ${props.expected.sot.toFixed(1)} a puerta · ${props.expected.cards.toFixed(1)} tarjetas.`;
         else note = 'Sin suficientes partidos recientes con estadísticas para córners, remates y tarjetas.';
+        if (Y.PROP_LGS && !Y.PROP_LGS.includes(m.lg) && window.RadarProps.selfCheck) {
+          const ck = await window.RadarProps.selfCheck(m.lg).catch(() => null);
+          const tx = g => { const v = ck && ck[g]; return !v || !v.matches ? `${g.toLowerCase()} sin datos suficientes` : `${g.toLowerCase()} ${v.ok ? 'validados' : 'NO validados'} (${v.matches} partidos: dijo ${Math.round(v.said * 100)}%, pasó ${Math.round(v.hit * 100)}%)`; };
+          note += ` Prueba con los últimos 150 días de esta liga: ${tx('Córners')}; ${tx('Tarjetas')}. Solo lo validado entra al ticket sugerido.`;
+        }
       } catch (e) { note = 'No pude cargar córners/remates/tarjetas.'; }
     }
     // Últimos 5 enfrentamientos: contexto (y ya pesan 10% en los goles esperados).

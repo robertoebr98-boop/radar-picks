@@ -120,3 +120,9 @@ Lectura: la correlación NO da valor por sí sola; Draftea ya la descuenta en el
 
 ## Parlay soñador
 $5 → $30,000 = momio 6,000: probabilidad justa 0.017% (1 de cada ~6,000); con el margen de la casa (~6% por selección, 10–12 selecciones) la real ronda 0.009%. Momio ~20x ≈ 5%.
+
+## Córners y tarjetas fuera de Europa: autovalidación en la página (21-nov-2026)
+
+ESPN trae córners, faltas y remates por partido en Liga MX y J1 (no tarjetas como estadística; se cuentan desde la lista de jugadas). football-data.co.uk solo trae resultados y momios para esas ligas.
+Para ligas fuera del backtest, la página predice cada partido de los últimos 150 días con sus 5 semanas previas y compara (props.js `evaluate`). Entra al ticket solo si: ≥ 60 partidos, ≥ 200 predicciones de 60%+, error total ≤ 3 puntos y cada tramo con 40+ casos ≤ 5 puntos.
+Prueba del criterio con ventanas de 150 días de Europa: córners pasó 4 de 4 ligas; tarjetas 4 de 8 (más ruidosas: solo pasan cuando de verdad están bien).

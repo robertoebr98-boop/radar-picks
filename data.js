@@ -125,6 +125,7 @@
       hs: num(home.score), as: num(away.score),
       homeSot: statOf(home, 'shotsOnTarget'), awaySot: statOf(away, 'shotsOnTarget'),
       stats: { home: statsObj(home), away: statsObj(away) },
+      cards: cardsOf(c, home, away),
       homeForm: typeof home.form === 'string' ? home.form : '', awayForm: typeof away.form === 'string' ? away.form : '',
       homeAbbr: home.team?.abbreviation || '', awayAbbr: away.team?.abbreviation || '',
       odds: parseOdds((c.odds || [])[0]),
@@ -135,6 +136,16 @@
   function statOf(comp, name) {
     const st = (comp.statistics || []).find(x => x.name === name);
     return st ? num(st.displayValue ?? st.value) : null;
+  }
+
+  // Tarjetas por partido: ESPN no las da como estadística, vienen en la lista de jugadas (details).
+  function cardsOf(c, home, away) {
+    const det = c.details;
+    if (!Array.isArray(det) || !det.length) return null;
+    const hid = String(home.id || home.team?.id), aid = String(away.id || away.team?.id);
+    const r = { home: 0, away: 0 };
+    for (const d of det) if (d && (d.yellowCard || d.redCard)) { const t = String(d.team?.id || ''); if (t === hid) r.home++; else if (t === aid) r.away++; }
+    return r;
   }
 
   function statsObj(comp) {
@@ -206,8 +217,8 @@
   }
 
   // Todos los partidos terminados (con estadísticas) de la liga en esas fechas.
-  async function matchStatsFull(lg, isoDates) {
-    const days = [...new Set(isoDates.map(espnDay))].slice(0, 45);
+  async function matchStatsFull(lg, isoDates, maxDays = 45) {
+    const days = [...new Set(isoDates.map(espnDay))].slice(0, maxDays);
     const out = [], seen = new Set();
     for (let i = 0; i < days.length; i += 7) {
       const chunk = await Promise.all(days.slice(i, i + 7).map(d => get(site(lg, 'scoreboard'), { dates: d }).catch(() => ({ events: [] }))));

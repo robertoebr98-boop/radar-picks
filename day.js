@@ -181,7 +181,14 @@
             const cls = Cx ? Cx.classify([...st.values()], lg) : null;
             const name = (D.LEAGUES.find(l => l.id === lg) || {}).name || lg;
             const anyUp = evs.some(e => !e.completed && e.state !== 'in');
-            const pAvgs = anyUp && PROP_LGS.includes(lg) && root.RadarProps ? await root.RadarProps.leagueHistory(lg).catch(() => null) : null;
+            // Ligas fuera del backtest: solo entran los grupos que pasaron la autovalidación (se corre en segundo plano).
+            let groups = PROP_LGS.includes(lg) ? PROP_GROUPS : [];
+            if (!groups.length && anyUp && root.RadarProps && root.RadarProps.selfCheck) {
+              const ck = root.RadarProps.cachedCheck(lg);
+              if (ck) groups = PROP_GROUPS.filter(g => ck[g] && ck[g].ok);
+              else root.RadarProps.selfCheck(lg).catch(() => null);
+            }
+            const pAvgs = anyUp && groups.length && root.RadarProps ? await root.RadarProps.leagueHistory(lg).catch(() => null) : null;
             // Por partido: consenso de casas y, si aún no empieza, sus últimos 5 enfrentamientos (en paralelo).
             const rs = await Promise.all(evs.map(async e => {
               const up = !e.completed && e.state !== 'in';
@@ -190,7 +197,7 @@
                 up && D.h2h ? D.h2h(lg, e.homeId, e.awayId).catch(() => []) : [],
               ]);
               const r = soccerMatch(e, st, avg, cons, cls, hh);
-              if (r && up && pAvgs) r.legs.push(...propLegs(e, pAvgs, lg));
+              if (r && up && pAvgs) r.legs.push(...propLegs(e, pAvgs, lg).filter(l => groups.includes(l.group)));
               return r ? { league: name, lg, h2hGames: hh, ...r } : { league: name, lg, ev: e, legs: [], winner: null, noData: true };
             }));
             out.push(...rs);
