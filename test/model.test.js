@@ -239,6 +239,26 @@ t('autovalidación de córners/tarjetas: tarjetas desde la lista de jugadas y ve
   const r = P.evaluate([], 'mex.1');
   assert(r['Córners'].ok === false && r['Tarjetas'].matches === 0);
 });
+t('calibración por tipo y rango, y monto sugerido con topes', () => {
+  global.RadarModel = M;
+  const MO = require('../money.js');
+  const L = (id, p, hit) => ({ key: 'mex.1:1:2:' + id, matchKey: 'mex.1:1:2', label: id, p, hit });
+  const tk = [
+    { kind: 'regular', status: 'ganado', legs: [L('O1.5', 0.75), L('1X', 0.82)] },
+    { kind: 'regular', status: 'perdido', legs: [L('O2.5', 0.72, false), L('1', 0.65, true), L('C>8.5', 0.7)] },
+    { kind: 'sonador', status: 'perdido', legs: [L('2', 0.3, false)] },
+  ];
+  const c = MO.calibration(tk);
+  assert.strictEqual(c.total.n, 4); assert.strictEqual(c.unknown, 1);
+  assert(c.rows.find(r => r.type === 'Goles' && r.bucket === '70–80%').n === 2);
+  assert.strictEqual(MO.typeOf(L('K>4.5', 0.7)), 'Tarjetas');
+  assert.strictEqual(MO.suggestStake({ bank: 1000, p: 0.5, odd: 1.8 }).amount, 0); // valor esperado negativo
+  const s1 = MO.suggestStake({ bank: 1000, p: 0.6, odd: 2.0 }); // kelly 0.2 → ¼ = 5% → $50
+  assert.strictEqual(s1.amount, 50);
+  assert.strictEqual(MO.suggestStake({ bank: 1000, p: 0.7, odd: 2.0 }).amount, 50); // tope 5%
+  assert.strictEqual(MO.suggestStake({ bank: 1000, p: 0.6, odd: 2.0, overlap: true }).amount, 25);
+  assert.strictEqual(MO.suggestStake({ bank: 915.26, p: 0.001, odd: 6000, kind: 'sonador' }).amount, 5);
+});
 const OP = require('../opinion.js');
 t('opinión: se califica y se compara con lo que esperaba el modelo', () => {
   OP._useMemory({});

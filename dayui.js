@@ -321,7 +321,7 @@
       ph += [...r.played].sort(byTime).map(m => {
         const L = m.reviewLeg;
         const rd = readingOf(m), rh = rd && window.RadarReading.hit(rd, m.ev.hs, m.ev.as);
-        if (rh != null) { rdN++; if (rh) rdOk++; }
+        if (rh != null) { rdN++; if (rh) rdOk++; if (window.RadarMoney) window.RadarMoney.logReading(`${m.lg}:${m.ev.homeId}:${m.ev.awayId}:${String(m.ev.date).slice(0, 10)}`, rh); }
         const rdTag = rh == null ? '' : ` <span class="st ${rh ? 'ok' : 'bad'}">lectura ${rh ? '✓' : '✗'} ${rd.winner === 'x' ? 'parejo' : esc(Y.shortName(rd.winner === 'h' ? m.ev.homeName : m.ev.awayName))}</span>`;
         const tag = L ? `<span class="st ${L.hit ? 'ok' : 'bad'}">${L.hit ? '✓' : '✗'} ${esc(L.label)} ${pct(L.p)}</span>` : '<span class="m">sin selección sugerida</span>';
         return `<div class="dm" style="cursor:default"><span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br>${tag}${rdTag}</span><b class="num">${esc(m.result || '-')}</b></div>`;

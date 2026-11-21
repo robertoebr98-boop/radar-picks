@@ -80,7 +80,7 @@
     html += list.map(t => {
       const cls = { ganado: 'ok', perdido: 'bad', pendiente: 'no' }[t.status] || 'no';
       const open = openId === t.id;
-      const legs = open ? `<div class="svlegs">${[...t.legs].sort((a, b) => (a.t ? new Date(a.t).getTime() : Infinity) - (b.t ? new Date(b.t).getTime() : Infinity)).map(l => `<div class="svleg"><span>${esc(l.label)}<br><span class="m">${l.t ? `<span class="hr num">${new Date(l.t).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}</span> ` : ''}${esc(l.match)}${l.p ? ` · modelo ${Math.round(l.p * 100)}%` : ''}${l.hit === true ? ' ✓' : l.hit === false ? ' ✗' : ''}</span></span><span class="num">${l.dft ? 'Draftea ' + (+l.dft).toFixed(2) : 'prov. ' + (l.prov ? (+l.prov).toFixed(2) : '-')}</span></div>`).join('')}</div>` : '';
+      const legs = open ? `<div class="svlegs">${[...t.legs].sort((a, b) => (a.t ? new Date(a.t).getTime() : Infinity) - (b.t ? new Date(b.t).getTime() : Infinity)).map(l => `<div class="svleg"><span>${esc(l.label)}<br><span class="m">${l.t ? `<span class="hr num">${new Date(l.t).toLocaleString('es-MX', { timeZone: 'America/Mexico_City', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })}</span> ` : ''}${esc(l.match)}${l.p ? ` · modelo ${Math.round(l.p * 100)}%` : ''}</span></span><span class="num">${l.dft ? 'Draftea ' + (+l.dft).toFixed(2) : 'prov. ' + (l.prov ? (+l.prov).toFixed(2) : '-')}</span><button class="lh ${l.hit === true ? 'ok' : l.hit === false ? 'bad' : ''}" data-lh="${esc(t.id)}|${esc(l.key)}" title="Marcar si esta selección pegó" aria-label="Resultado de ${esc(l.label)}">${l.hit === true ? '✓' : l.hit === false ? '✗' : '?'}</button></div>`).join('')}</div>` : '';
       return `<div class="sv${open ? ' open' : ''}">
         <button class="svh" data-toggle="${t.id}" aria-expanded="${open}">
           <span><b>${esc(t.name)}</b><br><span class="m num">${(+t.odd || 0).toFixed(2)}x · ${money(+t.stake)} → ${money(+t.payout)}</span></span>
@@ -96,7 +96,14 @@
         </div>` : ''}
       </div>`;
     }).join('') || '<p class="note">Aún no guardas tickets. Arma uno en la calculadora y dale "Guardar ticket".</p>';
+    html += calibHtml();
     $('savedlist').innerHTML = html;
+    $('savedlist').querySelectorAll('[data-lh]').forEach(b => b.addEventListener('click', () => {
+      const [id, key] = b.dataset.lh.split('|'); const t = list.find(x => x.id === id); if (!t) return;
+      const l = t.legs.find(x => x.key === key); if (!l) return;
+      l.hit = l.hit === undefined || l.hit === null ? true : l.hit === true ? false : null;
+      t.updatedAt = Date.now(); persist(); render();
+    }));
     $('savedlist').querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', () => { openId = openId === b.dataset.toggle ? null : b.dataset.toggle; render(); }));
     $('savedlist').querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => openInCalc(b.dataset.open)));
     $('savedlist').querySelectorAll('[data-st]').forEach(b => b.addEventListener('click', () => { const [id, st] = b.dataset.st.split(':'); setStatus(id, st); }));
@@ -126,6 +133,22 @@
       } catch (e) { $('savedmsg').innerHTML = '<div class="err">Ese archivo no es de Mis tickets.</div>'; }
     };
     r.readAsText(file);
+  }
+
+  // ---- Calibración: lo que dijo el modelo vs lo que pegó (solo regulares) ----
+  function calibHtml() {
+    const MO = window.RadarMoney; if (!MO) return '';
+    const c = MO.calibration(list, 'regular'), rd = MO.readingStats();
+    if (!c.total && !rd.n) return '';
+    const pc = x => Math.round(x * 100) + '%';
+    const cls = r => r.n < 5 ? 'eq' : r.hit >= r.said - 0.05 ? 'up' : 'down';
+    const rows = c.rows.map(r => `<span>${esc(r.type)} <span class="m">${r.bucket}</span></span><b class="num">${pc(r.said)}</b><b class="num ${cls(r)}">${pc(r.hit)}</b><span class="num m">${r.n}</span>`).join('');
+    const tot = c.total ? `<span><b>Total</b></span><b class="num">${pc(c.total.said)}</b><b class="num ${cls(c.total)}">${pc(c.total.hit)}</b><span class="num m">${c.total.n}</span>` : '';
+    const rdRow = rd.n ? `<span>Lectura del partido</span><span></span><b class="num">${pc(rd.hits / rd.n)}</b><span class="num m">${rd.n}</span>` : '';
+    const small = !c.total || c.total.n < 20 ? `<p class="note">Muestra chica (${c.total ? c.total.n : 0} selecciones): con menos de 20 todavía no dice mucho.</p>` : '';
+    return `<details class="fold"><summary>Calibración <span class="m">${c.total ? `dijo ${pc(c.total.said)} · pegó ${pc(c.total.hit)} · ${c.total.n} selecciones` : 'sin datos'}</span></summary>
+      <div class="cal"><span class="hd">Tipo</span><span class="hd">Dijo</span><span class="hd">Pegó</span><span class="hd">Casos</span>${tot}${rows}${rdRow}</div>
+      ${small}<p class="note">Solo regulares. Toca ? en cada selección de un ticket perdido para marcar cuál pegó; los ganados cuentan todas ✓.${c.unknown ? ` Faltan ${c.unknown} por marcar.` : ''}</p></details>`;
   }
 
   // ---- Marcador en vivo de los tickets pendientes ----

@@ -149,6 +149,7 @@
         <span>Ganancia</span><b class="num good">${P.ready ? money(P.profit) : '-'}</b><b class="num good">${R.ready ? money(R.profit) : '-'}</b>
         <span>Valor esperado</span><b class="num ${P.ev >= 0 ? 'good' : 'bad'}">${P.ready ? sign(P.ev) : '-'}</b><b class="num ${evCls}">${R.ready ? sign(R.ev) : '-'}</b>
       </div>
+      ${sugHtml(c, R)}
       <div class="evbig ${R.ready ? evCls : ''}"><span>Valor esperado (con Draftea)</span><b class="num">${R.ready ? sign(R.ev) : '-'}</b><span class="m">${R.ready ? (R.ev >= 0 ? 'a la larga este ticket gana dinero' : 'a la larga este ticket pierde dinero') : 'faltan momios'}</span></div>
       <details class="fold" ${window.__slipMore ? 'open' : ''} ontoggle="window.__slipMore=this.open"><summary>Más números <span class="m">prob ${pct(c.p)} · pega 1 de cada ${c.p > 0 ? Math.round(1 / c.p).toLocaleString('es-MX') : '∞'}</span></summary>
       <div class="sgrid one">
@@ -175,6 +176,8 @@
     }));
     $('slipbody').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => remove(b.dataset.rm)));
     const clr = $('slipclear'); if (clr) clr.addEventListener('click', () => { S.legs = []; OPT = null; save(); render(); });
+    const bk = $('bank'); if (bk) bk.addEventListener('change', () => { const n = parseFloat(bk.value.replace(',', '.')); try { if (n > 0) localStorage.setItem(BK, String(n)); else localStorage.removeItem(BK); } catch (e) { /* nada */ } render(); });
+    const us = $('usesug'); if (us) us.addEventListener('click', () => { const MO = window.RadarMoney, c2 = calc(), R2 = totals(+S.stake || 0, S.legs, used); const kind = ($('savekind') && $('savekind').value) || 'regular'; const open = window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set(); const sg = MO.suggestStake({ bank: bank(), p: c2.p, odd: R2.odd, kind, overlap: S.legs.some(l => open.has(l.matchKey)) }); S.stake = sg.amount; save(); render(); });
     const ob = $('optgo'); if (ob) ob.addEventListener('click', () => { OPT = runOpt(); setTimeout(render); });
     const oo = $('optopen'); if (oo) oo.addEventListener('change', () => { optOpen = oo.checked; if (OPT) OPT = runOpt(); setTimeout(render); });
     const oa = $('optmode'); if (oa) oa.addEventListener('change', () => { optMode = oa.value; if (OPT) OPT = runOpt(); setTimeout(render); });
@@ -213,6 +216,20 @@
         ${rows ? `<ul>${rows}</ul>` : ''}${gi.other.length ? `<p class="m">${gi.other.length} selección(es) de córners/tarjetas se calculan aparte.</p>` : ''}${freeHtml}</div>`;
     }
     return html;
+  }
+
+  // Monto sugerido con tu saldo (¼ Kelly, tope 5%; soñador 0.5%; $0 si el valor esperado es negativo).
+  const BK = 'radar.bank';
+  const bank = () => { try { return +localStorage.getItem(BK) || 0; } catch (e) { return 0; } };
+  function sugHtml(c, R) {
+    const MO = window.RadarMoney; if (!MO) return '';
+    const kind = ($('savekind') && $('savekind').value) || 'regular';
+    const open = window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set();
+    const overlap = S.legs.some(l => open.has(l.matchKey));
+    const b = bank();
+    const sg = b && R.ready ? MO.suggestStake({ bank: b, p: c.p, odd: R.odd, kind, overlap }) : null;
+    return `<div class="sug"><label class="m">Saldo $<input class="in sm" id="bank" inputmode="decimal" value="${b || ''}" placeholder="tu saldo" style="width:90px"></label>
+      ${sg ? `<span>Sugerido: <b class="num">$${sg.amount}</b> <span class="m">${esc(sg.why)}</span></span>${sg.amount > 0 && sg.amount !== +S.stake ? '<button class="btn ghost sm" id="usesug">Usar</button>' : ''}` : `<span class="m">${b ? 'faltan momios' : 'escribe tu saldo para ver el monto sugerido'}</span>`}</div>`;
   }
 
   // Botón Optimizar ticket y su propuesta (antes vs después).
@@ -270,6 +287,7 @@
 
   function init() {
     $('slipstake').addEventListener('input', () => { S.stake = Math.max(0, parseFloat($('slipstake').value) || 0); save(); render(); });
+    const sk = $('savekind'); if (sk) sk.addEventListener('change', () => render());
     $('slipbar').addEventListener('click', () => $('slip').scrollIntoView({ behavior: 'smooth', block: 'start' }));
     // Botones "+" en cualquier parte de la página (se crean después, por eso se escucha en el documento).
     document.addEventListener('click', e => {
