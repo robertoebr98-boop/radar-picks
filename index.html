@@ -313,6 +313,10 @@ td.addc{width:34px;padding-left:6px}
 .dfi input{width:18px;height:18px;accent-color:var(--good)}
 .dfi.done b{text-decoration:line-through;color:var(--muted)}
 .tk.ip{border-color:var(--good);background:linear-gradient(180deg,color-mix(in srgb,var(--good) 10%,transparent),transparent 120px)}
+.livecard{padding:0;border:0;background:none;box-shadow:none}
+.livecard .tk.ip{margin:0}
+.tk.ip.idle{background:var(--card)}
+.ipmsg{margin:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .ipm{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:10px;background:var(--sub);border:1px solid var(--line)}
 .ipd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px}
 .ipm .m,.ipd .m{font-size:11px;color:var(--muted)}
@@ -357,7 +361,7 @@ td.addc{width:34px;padding-left:6px}
     <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--on-accent)" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="var(--on-accent)"/></svg>
     Radar de picks
   </h1>
-    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-zb</span>
+    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-zc</span>
       <button class="btn sm" id="refresh">Actualizar</button>
       <button class="icon" id="theme" aria-label="Cambiar tema claro u oscuro">☀︎</button></div>
   </div>
@@ -374,6 +378,8 @@ td.addc{width:34px;padding-left:6px}
     <h3>Próximos 7 días</h3>
     <div class="fixtures" id="fixtures"><div class="loading"><span class="spin"></span>Cargando partidos…</div></div>
   </section>
+
+  <section class="card livecard" aria-label="En vivo" id="livecard"><div id="inplay"></div></section>
 
   <section class="card" aria-label="Pronóstico del día" id="daycard">
     <h2>Pronóstico del día <small>todos los partidos de una fecha</small></h2>
@@ -504,19 +510,19 @@ td.addc{width:34px;padding-left:6px}
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
 </div>
 <button class="slipbar hidden" id="slipbar" aria-label="Ver ticket"></button>
-<script src="model.js?v=20261121zb"></script>
-<script src="context.js?v=20261121zb"></script>
-<script src="data.js?v=20261121zb"></script>
-<script src="app.js?v=20261121zb"></script>
-<script src="day.js?v=20261121zb"></script>
-<script src="props.js?v=20261121zb"></script>
-<script src="reading.js?v=20261121zb"></script>
-<script src="inplay.js?v=20261121zb"></script>
-<script src="dayui.js?v=20261121zb"></script>
-<script src="optimize.js?v=20261121zb"></script>
-<script src="slip.js?v=20261121zb"></script>
-<script src="money.js?v=20261121zb"></script>
-<script src="live.js?v=20261121zb"></script>
-<script src="saved.js?v=20261121zb"></script>
+<script src="model.js?v=20261121zc"></script>
+<script src="context.js?v=20261121zc"></script>
+<script src="data.js?v=20261121zc"></script>
+<script src="app.js?v=20261121zc"></script>
+<script src="day.js?v=20261121zc"></script>
+<script src="props.js?v=20261121zc"></script>
+<script src="reading.js?v=20261121zc"></script>
+<script src="inplay.js?v=20261121zc"></script>
+<script src="dayui.js?v=20261121zc"></script>
+<script src="optimize.js?v=20261121zc"></script>
+<script src="slip.js?v=20261121zc"></script>
+<script src="money.js?v=20261121zc"></script>
+<script src="live.js?v=20261121zc"></script>
+<script src="saved.js?v=20261121zc"></script>
 </body>
 </html>
