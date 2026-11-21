@@ -361,7 +361,7 @@ td.addc{width:34px;padding-left:6px}
     <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="var(--accent)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--on-accent)" stroke-width="2.5"/><circle cx="16" cy="16" r="2.5" fill="var(--on-accent)"/></svg>
     Radar de picks
   </h1>
-    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-ze</span>
+    <div class="fresh"><span class="live" aria-hidden="true"></span><span id="upd">Cargando datos…</span> <span class="m" id="ver" title="Versión de la página">· v21-nov-zf</span>
       <button class="btn sm" id="refresh">Actualizar</button>
       <button class="icon" id="theme" aria-label="Cambiar tema claro u oscuro">☀︎</button></div>
   </div>
@@ -391,6 +391,12 @@ td.addc{width:34px;padding-left:6px}
     <div class="dmode" role="radiogroup" aria-label="Tipo de pronóstico">
       <label><input type="radio" name="dmode" value="normal" checked> <span>Normal</span></label>
       <label><input type="radio" name="dmode" value="dream"> <span>Soñador</span></label>
+    </div>
+    <div class="opth npform" id="npform">
+      <label class="m">Selecciones <select class="in sm" id="npn"><option value="0">auto</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+      <label class="m">Por partido <select class="in sm" id="npper"><option value="1">1 (varios partidos)</option><option value="2">hasta 2</option><option value="3">hasta 3 (pocos partidos)</option></select></label>
+      <label class="m">Momio mín. <select class="in sm" id="npodd"><option value="1.1">1.10</option><option value="1.2" selected>1.20</option><option value="1.3">1.30</option></select></label>
+      <label class="m">Boost % <input class="in sm" id="npboost" type="number" min="0" step="5" placeholder="0" style="width:64px"></label>
     </div>
     <div id="dftbox" class="dftbox">
       <label class="dfth"><input type="checkbox" id="dfton" checked> <b>Solo ligas de Draftea</b></label>
@@ -510,19 +516,19 @@ td.addc{width:34px;padding-left:6px}
   <p class="foot">Datos públicos de ESPN. Modelo propio, sin costo. Apuesta con responsabilidad.</p>
 </div>
 <button class="slipbar hidden" id="slipbar" aria-label="Ver ticket"></button>
-<script src="model.js?v=20261121ze"></script>
-<script src="context.js?v=20261121ze"></script>
-<script src="data.js?v=20261121ze"></script>
-<script src="app.js?v=20261121ze"></script>
-<script src="day.js?v=20261121ze"></script>
-<script src="props.js?v=20261121ze"></script>
-<script src="reading.js?v=20261121ze"></script>
-<script src="inplay.js?v=20261121ze"></script>
-<script src="dayui.js?v=20261121ze"></script>
-<script src="optimize.js?v=20261121ze"></script>
-<script src="slip.js?v=20261121ze"></script>
-<script src="money.js?v=20261121ze"></script>
-<script src="live.js?v=20261121ze"></script>
-<script src="saved.js?v=20261121ze"></script>
+<script src="model.js?v=20261121zf"></script>
+<script src="context.js?v=20261121zf"></script>
+<script src="data.js?v=20261121zf"></script>
+<script src="app.js?v=20261121zf"></script>
+<script src="day.js?v=20261121zf"></script>
+<script src="props.js?v=20261121zf"></script>
+<script src="reading.js?v=20261121zf"></script>
+<script src="inplay.js?v=20261121zf"></script>
+<script src="dayui.js?v=20261121zf"></script>
+<script src="optimize.js?v=20261121zf"></script>
+<script src="slip.js?v=20261121zf"></script>
+<script src="money.js?v=20261121zf"></script>
+<script src="live.js?v=20261121zf"></script>
+<script src="saved.js?v=20261121zf"></script>
 </body>
 </html>

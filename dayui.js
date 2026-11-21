@@ -50,7 +50,10 @@
       '<option value="all">Todo (fútbol + NBA + NFL)</option>',
     ].join('');
     $('dgo').addEventListener('click', () => run());
-    document.querySelectorAll('input[name=dmode]').forEach(r => r.addEventListener('change', () => { DMODE = r.value; if (LAST) render(LAST, LASTREQ && LASTREQ.date); }));
+    // Selector de N selecciones / boost: visible desde antes de pronosticar (solo modo Normal).
+    ['npn', 'npper', 'npodd'].forEach(id => $(id).addEventListener('change', () => { NPICK.n = +$('npn').value || 0; LAST ? buildNPick() : run(); }));
+    $('npboost').addEventListener('input', () => { if (LAST) buildNPick(); });
+    document.querySelectorAll('input[name=dmode]').forEach(r => r.addEventListener('change', () => { DMODE = r.value; $('npform').classList.toggle('hidden', DMODE === 'dream'); if (LAST) render(LAST, LASTREQ && LASTREQ.date); }));
     dftPanel();
     $('dfton').addEventListener('change', () => { DFT.on = $('dfton').checked; saveDft(); dftPanel(); });
     $('dftlist').addEventListener('change', e => {
@@ -372,12 +375,7 @@
         <label class="m">Por partido <select class="in sm" id="drper">${[1, 2].map(x => `<option value="${x}" ${x === DREAM.per ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
         <button class="btn sm" id="drgo">Armar</button></div>
       <div id="dream"></div>`;
-    if (DMODE !== 'dream') html += `<div class="opth npform">
-        <label class="m">Selecciones <select class="in sm" id="npn"><option value="0">auto</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(x => `<option value="${x}" ${x === NPICK.n ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
-        <label class="m">Por partido <select class="in sm" id="npper">${[[1, '1 (varios partidos)'], [2, 'hasta 2'], [3, 'hasta 3 (pocos partidos)']].map(([v, l]) => `<option value="${v}" ${v === NPICK.per ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-        <label class="m">Momio mín. <select class="in sm" id="npodd">${[1.10, 1.20, 1.30].map(x => `<option value="${x}" ${x === NPICK.minOdd ? 'selected' : ''}>${x.toFixed(2)}</option>`).join('')}</select></label>
-        <label class="m">Boost % <input class="in sm" id="npboost" type="number" min="0" step="5" value="${NPICK.boost || ''}" placeholder="0" style="width:64px"></label></div>
-      <div id="npick"></div><div id="tkauto">`;
+    if (DMODE !== 'dream') html += `<div id="npick"></div><div id="tkauto">`;
     if (DMODE === 'dream') html += `<div class="dreamtop"><h3>Pronóstico soñador · entrada chica, premio grande</h3>${dreamForm}</div>`;
     html += DMODE === 'dream' ? `<details class="tk fold"><summary>Ticket sugerido <span class="m">${t.legs.length} selecciones · prob ${pct(t.p)}</span></summary>` : `<div class="tk"><h3>Ticket sugerido · ${t.legs.length} selecciones · solo partidos por empezar</h3>`;
     if (t.legs.length) {
@@ -442,8 +440,6 @@
     const lp = $('ladp'); if (lp) lp.addEventListener('change', () => { LADP = +lp.value; renderLadder(); });
     const dg = $('drgo'); if (dg) dg.addEventListener('click', () => buildDream());
     if (DMODE === 'dream') buildDream();
-    ['npn', 'npper', 'npodd'].forEach(id => { const e = $(id); if (e) e.addEventListener('change', buildNPick); });
-    const nb = $('npboost'); if (nb) nb.addEventListener('input', buildNPick);
     if (DMODE !== 'dream') buildNPick();
     const all = $('addall');
     if (all) all.addEventListener('click', () => {
