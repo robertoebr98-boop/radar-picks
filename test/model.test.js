@@ -190,14 +190,19 @@ t('mejor momio para tu riesgo: respeta la prob. mínima y maximiza el momio', ()
   const two = r.find(x => x.n === 2);
   assert(two && Math.abs(two.odd - 1.57 * 1.35) < 1e-9, JSON.stringify(two && two.odd)); // a2+b2 = 39% no entra; la que más paga con ≥40% es b2+c1 (42%)
 });
-t('parlay soñador: llega al momio objetivo con la combinación más probable', () => {
-  const mk = (id, p, est) => ({ id, label: id, p, worst: p, est, odd: null, tag: 'x' });
-  const ms = Array.from({ length: 8 }, () => ({ legs: [mk('fav', 0.70, 1.35), mk('dog', 0.25, 3.8), mk('x', 0.28, 3.4)] }));
-  const r = Y.dreamParlay(ms, 1000);
-  assert(r && r.odd >= 1000 * 0.97, r && r.odd);
-  // la prob. es la del producto de sus selecciones
-  assert(Math.abs(r.p - r.legs.reduce((a, x) => a * x.leg.p, 1)) < 1e-12);
-  assert.strictEqual(Y.dreamParlay(ms.slice(0, 1), 1e6), null);
+t('parlay soñador: muchas selecciones con probabilidad individual alta, sin sorpresas', () => {
+  const mk = (id, p, est, group) => ({ id, label: id, p, worst: p, est, odd: null, tag: 'x', group });
+  const ms = Array.from({ length: 12 }, () => ({ legs: [mk('1X', 0.80, 1.20, 'Doble oportunidad'), mk('dog', 0.25, 3.8), mk('C>8.5', 0.70, 1.33, 'Córners'), mk('K>3.5', 0.66, 1.40, 'Tarjetas')] }));
+  const r = Y.dreamParlay(ms, 100, { minP: 0.65, perMatch: 2 });
+  assert(r && r.reached && r.odd >= 100 * 0.97, r && r.odd);
+  assert(r.legs.every(x => x.leg.p >= 0.65), 'sin sorpresas');
+  assert(!r.legs.some(x => x.leg.id === 'dog'));
+  assert(r.legs.length >= 10 && r.legs.length <= 20, r.legs.length);
+  const by = {}; for (const x of r.legs) by[ms.indexOf(x.match)] = (by[ms.indexOf(x.match)] || 0) + 1;
+  assert(Object.values(by).every(n => n <= 2));
+  // si no llega con 20 selecciones, devuelve el máximo posible y lo dice
+  const far = Y.dreamParlay(ms.slice(0, 2), 1e6, { minP: 0.65 });
+  assert(far && far.reached === false);
 });
 t('lectura del partido: favorito claro, parejo y acierto', () => {
   const RR = require('../reading.js');

@@ -279,33 +279,65 @@
 
   // Parlay soñador: la combinación MÁS PROBABLE (una selección por partido) cuyo momio total llega al objetivo.
   // Maximiza la suma de log(prob) con la condición de que la suma de log(momio) alcance log(objetivo).
-  function dreamParlay(matches, targetOdd, maxN = 20) {
+  // Parlay soñador: MUCHAS selecciones, cada una con probabilidad individual alta (piso minP, sin sorpresas),
+  // hasta llegar al momio objetivo con la mayor probabilidad total. Máx. perMatch por partido: la segunda solo si es de
+  // otro grupo y no va en contra de la primera (con goles se mide en la matriz de marcadores).
+  function dreamParlay(matches, targetOdd, opts = {}) {
+    if (typeof opts === 'number') opts = { maxN: opts };
+    const minP = opts.minP ?? 0.65, perMatch = opts.perMatch ?? 2, maxN = opts.maxN ?? 20;
     const STEP = 0.02, G = Math.ceil(Math.log(targetOdd) / STEP);
-    const opts = [];
+    const defs = {}; for (const d of M.marketDefs('L', 'V')) defs[d.id] = d.fn;
+    const groupOf = l => l.group || (l.prop ? 'Conteo' : ({ '1': 'R', 'X': 'R', '2': 'R', '1X': 'R', 'X2': 'R', '12': 'R' }[l.id] || (/^(1|2|1X|X2|12)&/.test(l.id) ? 'R' : 'Goles')));
+    const opt = (m, legs, p) => {
+      const odd = legs.reduce((a, l) => a * (l.odd || l.est), 1);
+      return { match: m, legs, p, odd, n: legs.length, w: Math.max(1, Math.round(Math.log(odd) / STEP)), lp: Math.log(p) };
+    };
+    const per = [];
     for (const m of matches) {
-      const ok = (m.legs || []).filter(l => (l.odd || l.est) > 1.05 && l.p > 0.02)
-        .map(l => ({ match: m, leg: l, w: Math.max(1, Math.round(Math.log(l.odd || l.est) / STEP)), lp: Math.log(l.p) }));
-      if (ok.length) opts.push(ok);
+      const ok = (m.legs || []).filter(l => l.p >= minP && (l.odd || l.est) >= 1.10 && l.tag !== 'volado');
+      if (!ok.length) continue;
+      const os = ok.map(l => opt(m, [l], l.p));
+      if (perMatch >= 2) {
+        const mat = m.res && M.scoreMatrix ? M.scoreMatrix(m.res.lh, m.res.la) : null;
+        for (let a = 0; a < ok.length; a++) for (let b = a + 1; b < ok.length; b++) {
+          const A = ok[a], B = ok[b];
+          if (groupOf(A) === groupOf(B)) continue;
+          let p = A.p * B.p; // córners/tarjetas con goles: casi independientes
+          if (defs[A.id] && defs[B.id] && mat) {
+            p = M.sumWhere(mat, (h, x) => defs[A.id](h, x) && defs[B.id](h, x));
+            if (p < A.p * B.p * 0.98) continue; // van en contra: no se combinan
+            p = Math.min(p, A.p, B.p);
+          }
+          os.push(opt(m, [A, B], p));
+        }
+      }
+      per.push(os);
     }
-    // dp[b] = {lp, n, picks}: mejor log-prob alcanzando b pasos de momio (b = G significa "ya llegó").
-    let dp = new Array(G + 1).fill(null);
-    dp[0] = { lp: 0, n: 0, picks: [] };
-    for (const ok of opts) {
-      const nx = dp.slice();
-      for (let b = 0; b <= G; b++) {
-        const cur = dp[b]; if (!cur || cur.n >= maxN) continue;
-        for (const o of ok) {
+    // dp[n][b] = mejor {lp, picks} con n selecciones y b pasos de momio (b = G: ya llegó).
+    let dp = Array.from({ length: maxN + 1 }, () => new Array(G + 1).fill(null));
+    dp[0][0] = { lp: 0, picks: [] };
+    for (const os of per) {
+      const nx = dp.map(r => r.slice());
+      for (let n = 0; n < maxN; n++) for (let b = 0; b <= G; b++) {
+        const cur = dp[n][b]; if (!cur) continue;
+        for (const o of os) {
+          const nn = n + o.n; if (nn > maxN) continue;
           const nb = Math.min(G, b + o.w), lp = cur.lp + o.lp;
-          if (!nx[nb] || nx[nb].lp < lp) nx[nb] = { lp, n: cur.n + 1, picks: [...cur.picks, o] };
+          if (!nx[nn][nb] || nx[nn][nb].lp < lp) nx[nn][nb] = { lp, picks: [...cur.picks, o] };
         }
       }
       dp = nx;
     }
-    const best = dp[G];
+    let best = null, reached = true;
+    for (let n = 1; n <= maxN; n++) if (dp[n][G] && (!best || dp[n][G].lp > best.lp)) best = dp[n][G];
+    if (!best) { // no llega: el máximo momio posible con estas reglas
+      reached = false;
+      for (let b = G; b > 0 && !best; b--) for (let n = 1; n <= maxN; n++) if (dp[n][b] && (!best || dp[n][b].lp > best.lp)) best = dp[n][b];
+    }
     if (!best) return null;
-    const legs = best.picks.map(o => ({ match: o.match, leg: o.leg }));
-    const p = legs.reduce((a, x) => a * x.leg.p, 1), odd = legs.reduce((a, x) => a * (x.leg.odd || x.leg.est), 1);
-    return { legs, p, odd, ev: p * odd - 1, real: legs.filter(x => x.leg.odd).length };
+    const legs = best.picks.flatMap(o => o.legs.map(l => ({ match: o.match, leg: l })));
+    const p = Math.exp(best.lp), odd = best.picks.reduce((a, o) => a * o.odd, 1);
+    return { legs, p, odd, ev: p * odd - 1, real: legs.filter(x => x.leg.odd).length, reached, minLeg: Math.min(...legs.map(x => x.leg.p)), matches: best.picks.length };
   }
 
   const api = { PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };

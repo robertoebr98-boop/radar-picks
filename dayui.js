@@ -128,11 +128,12 @@
   let SHOWN = [];
   let DMODE = 'normal';
   let LADMIN = 1.30, LADP = 0.40, LAST = null, LASTREQ = null;
-  const DREAM = { stake: 5, target: 30000, days: 1, extra: [] };
+  const DREAM = { stake: 5, target: 30000, days: 1, minP: 0.65, per: 2, extra: [] };
   async function buildDream() {
     const date = LASTREQ && LASTREQ.date;
     const box = $('dream'); if (!box || !LAST) return;
     DREAM.stake = Math.max(1, +$('drstake').value || 5); DREAM.target = Math.max(100, +$('drtarget').value || 30000); DREAM.days = +$('drdays').value || 1;
+    DREAM.minP = +$('drminp').value || 0.65; DREAM.per = +$('drper').value || 2;
     let matches = [...LAST.matches];
     if (DREAM.days > 1 && LASTREQ) {
       box.innerHTML = '<div class="loading"><span class="spin"></span>Juntando partidos de los próximos días…</div>';
@@ -142,17 +143,21 @@
       }
     }
     const odd = DREAM.target / DREAM.stake;
-    const t = Y.dreamParlay(matches, odd);
-    if (!t) { box.innerHTML = `<p class="note">Con ${matches.length} partidos no se llega a momio ${Math.round(odd).toLocaleString('es-MX')}. Suma días o baja el objetivo.</p>`; return; }
+    const t = Y.dreamParlay(matches, odd, { minP: DREAM.minP, perMatch: DREAM.per, maxN: 20 });
+    if (!t) { box.innerHTML = `<p class="note">Ningún partido tiene selecciones de ${Math.round(DREAM.minP * 100)}% o más. Baja la prob. mínima o suma días.</p>`; return; }
     const oneIn = Math.round(1 / t.p);
-    const p5 = Y.dreamParlay(matches, 20);
-    box.innerHTML = `<div class="sum"><span>${t.legs.length} selecciones · momio <b class="num">${Math.round(t.odd).toLocaleString('es-MX')}</b></span><span>$${DREAM.stake} → <b class="num">$${Math.round(DREAM.stake * t.odd).toLocaleString('es-MX')}</b></span></div>
-      <div class="warnbox"><b>Probabilidad real: ${(t.p * 100).toFixed(t.p < 0.001 ? 4 : 2)}%</b>, o sea, pega <b>1 de cada ${oneIn.toLocaleString('es-MX')}</b> intentos. Jugando $${DREAM.stake} cada semana, en promedio tardarías ${oneIn > 104 ? `${(oneIn / 52).toFixed(0)} años` : `${oneIn} semanas`} en pegarlo y gastarías ~$${(oneIn * DREAM.stake).toLocaleString('es-MX')} en el camino. Valor esperado ${(t.ev * 100).toFixed(0)}% por ticket${t.real < t.legs.length ? ' (con momios estimados; con momios reales de Draftea cambia)' : ''}.
-      ${p5 ? `<br>Para tener ~5% de probabilidad el momio debe ser ~20x: con estos partidos, momio ${p5.odd.toFixed(1)} pega ${(p5.p * 100).toFixed(1)}% ($${DREAM.stake} → $${Math.round(DREAM.stake * p5.odd)}).` : ''}</div>
+    const money0 = x => '$' + Math.round(x).toLocaleString('es-MX');
+    box.innerHTML = `${t.reached ? '' : `<p class="note"><b>Con estas reglas no llega a ${money0(DREAM.target)}.</b> Lo máximo con 20 selecciones de ${Math.round(DREAM.minP * 100)}%+ es momio ${Math.round(t.odd).toLocaleString('es-MX')} (${money0(DREAM.stake * t.odd)}). Suma días, baja la prob. mínima o sube la entrada.</p>`}
+      <div class="rpgs"><span></span><span></span><span></span>
+        <span>Selecciones</span><span></span><b class="num">${t.legs.length} <span class="m">en ${t.matches} partidos</span></b>
+        <span>Prob. individual mínima</span><span></span><b class="num">${pct(t.minLeg)}</b>
+        <span>Prob. total</span><span></span><b class="num">${(t.p * 100).toFixed(t.p < 0.001 ? 3 : 2)}% <span class="m">1 de cada ${oneIn.toLocaleString('es-MX')}</span></b>
+        <span>Momio · premio</span><span></span><b class="num">${Math.round(t.odd).toLocaleString('es-MX')} · ${money0(DREAM.stake * t.odd)}</b></div>
+      <p class="note">Cada selección por sí sola es probable; lo difícil es que pasen todas. ${t.real < t.legs.length ? 'Momios estimados: en Draftea pueden variar.' : ''}</p>
       <div class="dlegs">${t.legs.map(x => `<div class="leg"><span>${hr(x.match.ev.date)} <b>${esc(x.leg.label)}</b>${x.leg.prop ? ' <span class="st lean" title="Córners/tarjetas: validado en 3,800 partidos de las 5 grandes ligas; momio estimado">conteo · estimado</span>' : ''}<br><span class="m">${matchTitle(x.match)} · ${esc(x.match.league)}</span></span><span style="text-align:right"><b class="num">${pct(x.leg.p)}</b><br><span class="m">${x.leg.odd ? 'momio ' + f2(x.leg.odd) : 'aprox ' + f2(x.leg.est)}</span></span>${btn(x)}</div>`).join('')}</div>
       <div class="rpgb"><button class="btn" id="drsave">Guardar como soñador</button><button class="btn ghost" id="dradd">Pasar a la calculadora</button></div>
       <div id="drmsg"></div>
-      <p class="note">Elige en cada partido la selección que más momio da por cada punto de probabilidad que pierdes, hasta llegar al premio. Es la forma más probable de llegar a ese momio con estos partidos, pero sigue siendo una lotería: tómalo como entretenimiento, aparte de tus tickets regulares, y guárdalo en Mis tickets como "Soñador".</p>`;
+      <p class="note">Sin sorpresas: solo selecciones de ${Math.round(DREAM.minP * 100)}% o más, hasta ${DREAM.per} por partido (de distinto tipo y sin ir en contra entre sí). Entre todas las combinaciones, la más probable que llega al premio.</p>`;
     const sv = $('drsave');
     if (sv) sv.addEventListener('click', () => {
       const legs = t.legs.map(x => legOf(x));
@@ -269,6 +274,8 @@
         <label class="m">Entrada $<input class="in sm" id="drstake" type="number" min="1" step="1" value="${DREAM.stake}" style="width:70px"></label>
         <label class="m">Premio objetivo $<input class="in sm" id="drtarget" type="number" min="100" step="1000" value="${DREAM.target}" style="width:100px"></label>
         <label class="m">Partidos de <select class="in sm" id="drdays">${[1, 2, 3].map(d => `<option value="${d}" ${d === DREAM.days ? 'selected' : ''}>${d === 1 ? 'este día' : d + ' días'}</option>`).join('')}</select></label>
+        <label class="m">Prob. mínima <select class="in sm" id="drminp">${[0.60, 0.65, 0.70, 0.75].map(x => `<option value="${x}" ${x === DREAM.minP ? 'selected' : ''}>${Math.round(x * 100)}%</option>`).join('')}</select></label>
+        <label class="m">Por partido <select class="in sm" id="drper">${[1, 2].map(x => `<option value="${x}" ${x === DREAM.per ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
         <button class="btn sm" id="drgo">Armar</button></div>
       <div id="dream"></div>`;
     if (DMODE === 'dream') html += `<div class="dreamtop"><h3>Pronóstico soñador · entrada chica, premio grande</h3>${dreamForm}</div>`;
