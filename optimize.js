@@ -15,7 +15,12 @@
   };
 
   // legs: selecciones actuales. pool: Map matchKey -> {match, items:[{key,id,label,p,prov,provSrc}]}
+  // opts.mode: 'keep' = mismo número de selecciones (lo que se quita se reemplaza con otro partido),
+  // 'grow' = puede alargar, 'cut' (o sin modo) = solo cambia o quita. opts.exclude: partidos a no sumar.
   function optimize(legs, pool, opts = {}) {
+    const mode = opts.mode || (opts.allowAdd ? 'grow' : 'cut');
+    const exclude = opts.exclude || new Set();
+    const pendRm = [];
     const changes = [];
     const after = [];
     const inTicket = new Set(legs.map(l => l.key));
@@ -33,7 +38,8 @@
       }
       // 2) Quitar la que resta valor con momio real (si quedan otras).
       if (curV != null && curV < 0.97 && legs.length > 1) {
-        changes.push({ type: 'remove', from: cur, why: `resta valor (${curV.toFixed(2)} < 1): el momio paga menos de lo que vale` });
+        const why = `resta valor (${curV.toFixed(2)} < 1): el momio paga menos de lo que vale`;
+        if (mode === 'keep') pendRm.push({ cur, why }); else changes.push({ type: 'remove', from: cur, why });
         continue;
       }
       // 3) Sin momios reales: cambiar a una más segura del mismo partido que siga pagando ≥ 1.30.
@@ -43,23 +49,42 @@
       }
       // 4) Fuera de las reglas y sin alternativa: quitar.
       if (!allowed(cur) && legs.length > 1) {
-        changes.push({ type: 'remove', from: cur, why: oddOf(cur) < R.MIN_ODD ? 'momio menor a 1.30' : cur.p < R.MIN_P ? 'probabilidad menor a 60%' : 'es un volado' });
+        const why = oddOf(cur) < R.MIN_ODD ? 'momio menor a 1.30' : cur.p < R.MIN_P ? 'probabilidad menor a 60%' : 'es un volado';
+        if (mode === 'keep') pendRm.push({ cur, why }); else changes.push({ type: 'remove', from: cur, why });
         continue;
       }
       after.push(cur);
     }
     // 5) Opcional: sumar selecciones con valor real de otros partidos.
-    if (opts.allowAdd) {
-      const used = new Set(after.map(l => l.matchKey));
+    const candidates = () => {
+      const used = new Set([...after, ...pendRm.map(x => x.cur)].map(l => l.matchKey));
       const adds = [];
       for (const [mk, g] of pool) {
-        if (used.has(mk) || !g.items.length) continue;
+        if (used.has(mk) || exclude.has(mk) || !g.items.length) continue;
         const best = g.items.map(x => ({ ...x, matchKey: mk, match: g.match, dft: null }))
           .filter(x => !inTicket.has(x.key) && allowed(x) && valueOf(x) != null && valueOf(x) >= 1.05)
           .sort((a, b) => valueOf(b) - valueOf(a))[0];
         if (best) adds.push(best);
       }
-      adds.sort((a, b) => valueOf(b) - valueOf(a));
+      return adds.sort((a, b) => valueOf(b) - valueOf(a));
+    };
+    if (mode === 'keep') {
+      // Mismo número: cada selección que resta se cambia por una de otro partido con valor real y prob. parecida o mayor.
+      const adds = candidates();
+      for (const { cur, why } of pendRm) {
+        const i = adds.findIndex(a => a.p >= cur.p - 0.05);
+        if (i >= 0) {
+          const to = adds.splice(i, 1)[0];
+          changes.push({ type: 'swap', from: cur, to, why: `${why}; la cambia por otro partido con valor ${valueOf(to).toFixed(2)} y prob ${Math.round(to.p * 100)}%` });
+          after.push(to);
+        } else {
+          changes.push({ type: 'note', from: cur, why: `${why}, pero no hay reemplazo de otro partido con prob. parecida: se queda` });
+          after.push(cur);
+        }
+      }
+    }
+    if (mode === 'grow') {
+      const adds = candidates();
       for (const a of adds) {
         if (after.length >= R.MAX) break;
         after.push(a); changes.push({ type: 'add', to: a, why: `valor ${valueOf(a).toFixed(2)} con momio ${a.provSrc}` });

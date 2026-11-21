@@ -253,6 +253,15 @@ t('optimizar ticket: cambia, quita y respeta reglas', () => {
   const r2 = O.optimize(legs, pool, { allowAdd: true });
   assert(r2.after.some(l => l.key === 'C:1') && !r2.after.some(l => l.key === 'A:X'));
   assert(O.summary(r2.after, 10).ev > O.summary(legs, 10).ev);
+  // mismo número: la que resta se cambia por otro partido; excluye partidos de tickets abiertos
+  const rk = O.optimize(legs, pool, { mode: 'keep' });
+  assert.strictEqual(rk.after.length, legs.length, JSON.stringify(rk.after.map(l => l.key)));
+  assert(!rk.after.some(l => l.key === 'C:1') && rk.changes.some(c => c.type === 'note')); // C (70%) es menos segura que B (80%)
+  const pool2 = new Map([...pool, ['C', { match: 'C1 vs C2', items: [{ key: 'C:1', label: 'C1 gana', p: 0.80, prov: 1.40, provSrc: 'consenso' }] }]]);
+  const rk2 = O.optimize(legs, pool2, { mode: 'keep' });
+  assert(rk2.after.length === legs.length && rk2.after.some(l => l.key === 'C:1'));
+  const rx = O.optimize(legs, pool2, { mode: 'keep', exclude: new Set(['C']) });
+  assert(rx.after.length === legs.length && !rx.after.some(l => l.key === 'C:1') && rx.changes.some(c => c.type === 'note'));
   // estimados: solo cambia a una más segura que siga pagando >= 1.30
   const est = [{ key: 'E:1', matchKey: 'E', match: 'E', label: 'E1', p: 0.64, prov: 1.47, provSrc: 'estimado' }];
   const pe = new Map([['E', { match: 'E', items: [{ key: 'E:1X', label: 'E1X', p: 0.75, prov: 1.31, provSrc: 'estimado' }, { key: 'E:O0.5', label: 'O0.5', p: 0.93, prov: 1.05, provSrc: 'estimado' }] }]]);

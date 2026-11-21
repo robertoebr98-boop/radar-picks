@@ -213,6 +213,8 @@
     if (!on) syncMsg('apagado');
   }
   window.RadarSaved.merge = merge;
+  // Partidos que ya están en tickets abiertos (para no apilar riesgo en el mismo partido).
+  window.RadarSaved.openMatchKeys = () => new Set(list.filter(t => t.status === 'pendiente').flatMap(t => t.legs.map(l => l.matchKey)).filter(Boolean));
 
   function init() {
     $('syncgo').addEventListener('click', () => { const k = $('synckey').value.trim(); if (!k) return; try { localStorage.setItem(SK, k); } catch (e) {} syncUi(); sync(); });

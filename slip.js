@@ -10,7 +10,9 @@
   // Mercados vistos en la página (análisis, pronóstico del día, panel de mercados): de aquí salen las alternativas del optimizador.
   const POOL = new Map(); // matchKey -> {match, items: Map key -> leg}
   let OPT = null;         // propuesta pendiente {after, changes}
-  let allowAdd = false;
+  let optMode = 'keep';
+  const openMatches = () => (window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set());
+  const runOpt = () => window.RadarOptimize.optimize(S.legs, poolView(), { mode: optMode, exclude: openMatches() });
   function register(leg) {
     if (!leg || !leg.matchKey || !(leg.p > 0)) return;
     let g = POOL.get(leg.matchKey);
@@ -172,8 +174,8 @@
     }));
     $('slipbody').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => remove(b.dataset.rm)));
     const clr = $('slipclear'); if (clr) clr.addEventListener('click', () => { S.legs = []; OPT = null; save(); render(); });
-    const ob = $('optgo'); if (ob) ob.addEventListener('click', () => { OPT = window.RadarOptimize.optimize(S.legs, poolView(), { allowAdd }); setTimeout(render); });
-    const oa = $('optadd'); if (oa) oa.addEventListener('change', () => { allowAdd = oa.checked; if (OPT) OPT = window.RadarOptimize.optimize(S.legs, poolView(), { allowAdd }); setTimeout(render); });
+    const ob = $('optgo'); if (ob) ob.addEventListener('click', () => { OPT = runOpt(); setTimeout(render); });
+    const oa = $('optmode'); if (oa) oa.addEventListener('change', () => { optMode = oa.value; if (OPT) OPT = runOpt(); setTimeout(render); });
     const ok = $('optok'); if (ok) ok.addEventListener('click', () => { S.legs = OPT.after.map(l => ({ ...l })); OPT = null; save(); setTimeout(render); });
     const no = $('optno'); if (no) no.addEventListener('click', () => { OPT = null; setTimeout(render); });
     document.querySelectorAll('[data-slip]').forEach(b => { const on = has(b.dataset.slip); b.classList.toggle('on', on); b.textContent = on ? '✓' : '+'; b.setAttribute('aria-pressed', on); });
@@ -217,8 +219,8 @@
     const real = S.legs.filter(O.isReal).length;
     const head = `<div class="opt">
       <div class="opth"><button class="btn sm" id="optgo">Optimizar ticket</button>
-      <label class="m"><input type="checkbox" id="optadd" ${allowAdd ? 'checked' : ''}> Permitir agregar selecciones de otros partidos</label></div>
-      <p class="note">Busca en los mismos partidos un mercado con más valor (prob × momio), quita las que restan y respeta tus reglas: máx 10, momio ≥ 1.30, prob ≥ 60%, sin volados.</p>
+      <select class="in sm" id="optmode" aria-label="Modo del optimizador">${[['keep', 'Mismo número de selecciones'], ['grow', 'Puede alargar el ticket'], ['cut', 'Puede acortar (solo quitar)']].map(([v, l]) => `<option value="${v}" ${optMode === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <p class="note">Cambia por mercados con más valor (prob × momio) respetando tus reglas: momio ≥ 1.30, prob ≥ 60%, sin volados. No suma partidos que ya están en tus tickets abiertos.</p>
       ${real < S.legs.length ? `<div class="warnbox"><b>Ojo:</b> ${S.legs.length - real} de ${S.legs.length} selecciones usan momio <b>estimado</b>. Con momio estimado el valor esperado positivo <b>no es real</b> (sale del mismo modelo). Escribe el momio de Draftea o usa mercados con momio ESPN/consenso para que el optimizador compare valor de verdad; si no, solo te cambia a opciones más seguras.</div>` : ''}`;
     if (!OPT) return head + '</div>';
     if (!OPT.changes.length) return head + '<p class="note good">No encontré cambios que suban el valor con lo que hay cargado. Abre "Mercados ▾" de tus partidos o analiza el partido para darle más opciones.</p></div>';
@@ -227,6 +229,7 @@
     const sign = x => (x >= 0 ? '+' : '') + money(x);
     const ch = OPT.changes.map(c => c.type === 'swap'
       ? `<li><b>Cambiar</b> ${esc(c.from.label)} → <b>${esc(c.to.label)}</b> <span class="m">(${esc(c.from.match)} · ${esc(c.why)})</span></li>`
+      : c.type === 'note' ? `<li><b>Se queda</b> ${esc(c.from.label)} <span class="m">(${esc(c.from.match)} · ${esc(c.why)})</span></li>`
       : c.type === 'remove' ? `<li><b>Quitar</b> ${esc(c.from.label)} <span class="m">(${esc(c.from.match)} · ${esc(c.why)})</span></li>`
       : `<li><b>Agregar</b> ${esc(c.to.label)} <span class="m">(${esc(c.to.match)} · ${esc(c.why)})</span></li>`).join('');
     return head + `<ul class="optl">${ch}</ul>
