@@ -364,6 +364,25 @@
         }
       } catch (e) { note = 'No pude cargar córners/remates/tarjetas.'; }
     }
+    // NBA: jugadores (últimos 8 box scores de ESPN + lesionados del partido). Momio estimado: escribe el de Draftea.
+    if (m.lg === 'nba' && window.RadarNBA && !m.ev.completed) {
+      panel.innerHTML = '<div class="loading"><span class="spin"></span>Leyendo los últimos partidos de cada jugador…</div>';
+      try {
+        const pp = await window.RadarNBA.playerProps(D, m.ev);
+        const outs = [], dudas = [];
+        for (const [side, list] of [['away', pp.away], ['home', pp.home]]) {
+          const tn = name(side === 'home' ? m.ev.homeName : m.ev.awayName);
+          for (const pl of list) {
+            if (pl.out) { outs.push(pl.name); continue; }
+            const duda = pl.status && !/^active$/i.test(pl.status);
+            if (duda) dudas.push(`${pl.name} (${pl.status})`);
+            for (const l of pl.legs) rows.push({ id: `P${pl.id}${l.stat}${l.line}`, group: `Jugadores · ${tn}`, label: l.label, p: l.p, prov: 1 / l.p / 1.08, src: 'estimado',
+              extra: `${pl.avg[l.stat].toFixed(1)} prom · ${Math.round(pl.min)} min · ${pl.gp}/${pl.of} jug.${duda ? ' · DUDA' : ''}${pl.missedLast ? ' · no jugó el último' : ''}` });
+          }
+        }
+        note += ` Jugadores: promedio de sus últimos ${window.RadarNBA.PCFG.GAMES} partidos (60% los últimos 5), solo con ${window.RadarNBA.PCFG.MIN_MIN}+ minutos y líneas de 60%+.${outs.length ? ' Fuera: ' + outs.join(', ') + '.' : ''}${dudas.length ? ' En duda: ' + dudas.join(', ') + '.' : ''}${pp.injuries ? '' : ' ESPN aún no publica lesionados: revisa antes de apostar.'} Modelo de jugadores sin backtest: máx. 1–2 por ticket (lección T4).`;
+      } catch (e) { note += ' No pude cargar los jugadores.'; }
+    }
     // Últimos 5 enfrentamientos: contexto (y ya pesan 10% en los goles esperados).
     let h2hHtml = '';
     if (m.h2hGames && m.h2hGames.length && D.statsFor) {
@@ -378,7 +397,7 @@
       if (x.group !== g) { g = x.group; html += `<div class="mkg">${esc(g)}</div>`; }
       const vol = x.p >= 0.45 && x.p <= 0.55;
       const leg = { key: `${mkKey}:${x.id}`, matchKey: mkKey, lam: m.res ? [m.res.lh, m.res.la] : null, t: m.ev.date, match: title, label: x.label, p: x.p, prov: +x.prov.toFixed(2), provSrc: x.src };
-      html += `<div class="mkr${x.p >= 0.7 ? ' hi' : ''}"><span>${esc(x.label)}${vol ? ' <span class="st vol">volado</span>' : ''}</span><span class="num">${pct(x.p)}</span><span class="num">${f2(x.prov)}<br><span class="m">${esc(x.src)}</span></span>${window.RadarSlipBtn ? window.RadarSlipBtn(leg) : ''}</div>`;
+      html += `<div class="mkr${x.p >= 0.7 ? ' hi' : ''}"><span>${esc(x.label)}${vol ? ' <span class="st vol">volado</span>' : ''}${x.extra ? `<br><span class="m">${esc(x.extra)}</span>` : ''}</span><span class="num">${pct(x.p)}</span><span class="num">${f2(x.prov)}<br><span class="m">${esc(x.src)}</span></span>${window.RadarSlipBtn ? window.RadarSlipBtn(leg) : ''}</div>`;
     }
     panel.innerHTML = h2hHtml + `<div class="mkr hd"><span>Mercado</span><span>Prob.</span><span>Momio</span><span></span></div>${html}<p class="note">${esc(note)} "estimado" = momio justo del modelo menos el margen típico de la casa (6% en goles, 8% en córners/tarjetas). Escribe el real de Draftea en la calculadora. En verde, prob ≥ 70%.</p>`;
     panel.dataset.done = '1';
