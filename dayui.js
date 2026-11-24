@@ -99,7 +99,7 @@
 
   function legOf(x) {
     const m = x.match, mk = `${m.lg}:${m.ev.homeId}:${m.ev.awayId}`;
-    return { key: `${mk}:${x.leg.id}`, matchKey: mk, lam: m.res ? [m.res.lh, m.res.la] : null, t: m.ev.date, match: `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`, label: x.leg.label, p: x.leg.p, prov: +(x.leg.odd || x.leg.est).toFixed(2), provSrc: x.leg.odd ? 'ESPN' : 'estimado' };
+    return { key: `${mk}:${x.leg.id}`, matchKey: mk, lam: m.res ? [m.res.lh, m.res.la] : null, t: m.ev.date, match: `${Y.shortName(m.ev.homeName)} vs ${Y.shortName(m.ev.awayName)}`, label: x.leg.label, p: x.leg.p, prov: +(x.leg.odd || x.leg.est).toFixed(2), provSrc: x.leg.odd ? 'casa' : 'estimado' };
   }
   function btn(x) { return window.RadarSlipBtn ? window.RadarSlipBtn(legOf(x)) : ''; }
 
@@ -127,6 +127,19 @@
     return pick.slice(0, 2).map(l => `<div class="xline"><span><span class="st lean">${esc(l.group)}</span> <b>${esc(l.label)}</b> <span class="m">${pct(l.p)} · pide ≥ ${f2(l.minNeeded)}</span></span>${btn({ match: m, leg: l })}</div>`).join('');
   }
 
+  // NBA: racha, puntos (temporada / últimos 10) y marcador proyectado.
+  function nbaHtml(m) {
+    const n = m.nba, H = Y.shortName(m.ev.homeName), A = Y.shortName(m.ev.awayName);
+    const t = (name, s) => `${esc(name)} ${s.w}-${s.l} · últ. 10: ${s.w10}-${s.n10 - s.w10} · racha ${s.streak} · ${s.pf10.toFixed(0)} a favor / ${s.pa10.toFixed(0)} en contra`;
+    const pr = n.proj;
+    const proj = pr ? `<br><span class="m">Proyección: ${esc(H)} ${pr.ph.toFixed(0)}–${pr.pa.toFixed(0)} ${esc(A)} · margen ${pr.margin >= 0 ? esc(H) : esc(A)} por ${Math.abs(pr.margin).toFixed(1)} · total ${pr.total.toFixed(1)}${n.spread != null ? ` (casa: ${n.spread > 0 ? '+' : ''}${n.spread} local, ${m.total || '-'} pts)` : ''}</span>` : '';
+    return `<br><span class="m">${t(A, n.away)}</span><br><span class="m">${t(H, n.home)}</span>${proj}`;
+  }
+  // Momio de la casa del favorito, a la vista sin abrir el partido.
+  function mlLine(m) {
+    const w = m.winner && (m.legs || []).find(l => l.id === m.winner.id);
+    return w && w.odd ? `<br><span class="m">casa ${f2(w.odd)}</span>` : '';
+  }
   function matchTitle(m) { return `${esc(Y.shortName(m.ev.homeName))} vs ${esc(Y.shortName(m.ev.awayName))}`; }
 
   let SHOWN = [];
@@ -204,7 +217,7 @@
     NPICK.n = +$('npn').value || 0; NPICK.per = +$('npper').value || 1; NPICK.minOdd = +$('npodd').value || 1.20; NPICK.boost = Math.max(0, +$('npboost').value || 0);
     if (auto) auto.classList.toggle('hidden', NPICK.n > 0);
     if (!NPICK.n) { box.innerHTML = ''; return; }
-    const all = LAST.matches.filter(m => !m.us), ms = usable(all);
+    const all = LAST.matches.filter(m => !m.us || (m.legs && m.legs.length)), ms = usable(all);
     const skipped = all.length - ms.length;
     const openN = window.RadarSaved && window.RadarSaved.openCount ? window.RadarSaved.openCount() : 0;
     const t = Y.pickN(ms, NPICK.n, { minP: 0.65, perMatch: NPICK.per, minOdd: NPICK.minOdd, ban: NPICK.ban });
@@ -306,10 +319,12 @@
   const MAIN_MK = ['1', 'X', '2', '1X', 'X2', '12', 'O1.5', 'O2.5', 'O3.5', 'U2.5', 'U3.5', 'BTTS', 'NBTTS', 'H0.5', 'A0.5', 'H1.5', 'A1.5', '1&O1.5', '2&O1.5'];
   function mainRows(m) {
     const rows = [];
+    // NBA/NFL: sus selecciones ya traen momio de la casa (ESPN) o estimado.
+    if (m.us) return (m.legs || []).map(l => ({ id: l.id, group: l.group || 'Ganador', label: l.label, p: l.p, prov: l.odd || l.est, src: l.odd ? 'casa' : 'estimado' }));
     if (!m.res) return rows;
     for (const mk of m.res.markets) {
       if (!MAIN_MK.includes(mk.id)) continue;
-      let prov = m.odds && m.odds[mk.id], src = 'ESPN';
+      let prov = m.odds && m.odds[mk.id], src = ['1X', 'X2', '12'].includes(mk.id) ? 'casa (del 1X2)' : 'casa';
       const ci = { '1': 0, 'X': 1, '2': 2 }[mk.id];
       if (!prov && m.cons && ci != null) { prov = 1 / m.cons.probs[ci] / 1.05; src = 'consenso'; }
       if (!prov) { prov = mk.fair / 1.06; src = 'estimado'; }
@@ -424,11 +439,12 @@
       const sub = rd ? `<span class="rdl ${rd.tag}">${esc(rd.lines[0])}</span>${rd.lines[1] ? `<br><span class="m">${esc(rd.lines[1])}</span>` : ''}` : w
         ? `${esc(w.label)}${m.safe && m.safe.id !== w.id ? ` · seguro: ${esc(m.safe.label)} ${pct(m.safe.p)}` : ''}${m.res ? ` · goles esperados ${f2(m.res.lh)}–${f2(m.res.la)}` : ''}${m.cons ? ` · consenso ${m.cons.books} casas` : m.hasMarket ? '' : ' · sin momios'}`
         : (m.us ? 'ESPN aún no publica momios' : 'equipo sin partidos en la tabla');
+      const nbaLine = m.nba ? nbaHtml(m) : '';
       const clickable = !m.us && !m.noData;
       const idx = SHOWN.push(m) - 1;
       registerMatch(m);
       html += `<div class="dmw"><button class="dm" ${clickable ? `data-lg="${m.lg}" data-h="${m.ev.homeId}" data-a="${m.ev.awayId}"` : 'disabled'}>
-        <span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br><span class="m">${sub}</span>${motLine(m)}</span><span style="text-align:right">${right}</span></button>
+        <span>${hr(m.ev.date)} <b>${matchTitle(m)}</b> <span class="m">${esc(m.league)}</span><br><span class="m">${sub}</span>${motLine(m)}${nbaLine}</span><span style="text-align:right">${right}${mlLine(m)}</span></button>
         ${xtra(m)}
         ${m.legs && m.legs.length ? `<button class="mkbtn" data-mk="${idx}" aria-expanded="false">Mercados ▾</button><div class="mkpanel hidden" id="mk${idx}"></div>` : ''}</div>`;
     }
@@ -449,7 +465,7 @@
       const sumTxt = [rv && rv.n ? `selecciones ${rv.hits}/${rv.n}` : '', rdN ? `lectura ${rdOk}/${rdN}` : ''].filter(Boolean).join(' · ');
       html += fold(`Ya jugados hoy <span class="m">${sumTxt}</span>`, ph);
     }
-    html += '<p class="note">Toca un partido para ver el análisis completo. NBA y NFL usan la probabilidad de la casa sin margen.</p>';
+    html += '<p class="note">Toca un partido para ver el análisis completo. NBA: 50% modelo de puntos por equipo (temporada + últimos 10) y 50% casa; modelo nuevo sin backtest. NFL: probabilidad de la casa sin margen.</p>';
     $('dout').innerHTML = html;
     LAST = r; renderLadder();
     const lm = $('ladmin'); if (lm) lm.addEventListener('change', () => { LADMIN = +lm.value; renderLadder(); });

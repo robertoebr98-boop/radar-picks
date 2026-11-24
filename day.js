@@ -17,7 +17,12 @@
     if (!o) return {};
     const d = v => M.americanToDecimal(v);
     const r = { '1': d(flip ? o.ml.away : o.ml.home), 'X': d(o.ml.draw), '2': d(flip ? o.ml.home : o.ml.away) };
-    if (o.total && o.total.line === 2.5) { r['O2.5'] = d(o.total.over); r['U2.5'] = d(o.total.under); }
+    if (o.total && o.total.line) { const L = o.total.line; r['O' + L] = d(o.total.over); r['U' + L] = d(o.total.under); }
+    // Doble oportunidad derivada del 1X2 de la casa (mismo margen): así el ticket muestra momio de mercado, no estimado.
+    if (r['1'] && r['X'] && r['2']) {
+      const q = k => 1 / r[k];
+      r['1X'] = 1 / (q('1') + q('X')); r['X2'] = 1 / (q('X') + q('2')); r['12'] = 1 / (q('1') + q('2'));
+    }
     for (const k of Object.keys(r)) if (!r[k]) delete r[k];
     return r;
   }
@@ -79,17 +84,63 @@
     });
   }
 
-  // NBA / NFL: probabilidad de la casa sin margen (sin modelo propio todavía).
-  function usMatch(ev) {
+  // NBA / NFL: probabilidad de la casa sin margen. NBA además: modelo de puntos por equipo (nba.js), mezclado 50/50.
+  const NB = root.RadarNBA || (typeof require !== 'undefined' ? require('./nba.js') : null);
+  // Hándicap del local: primero "details" ("BOS -10.5", sin ambigüedad), si no, el campo spread.
+  function homeSpread(ev) {
+    const o = ev.odds || {}, d = String(o.details || '').trim();
+    const mt = d.match(/^([A-Z]{2,4})\s+([-+]?\d+(?:\.\d+)?)$/);
+    if (mt) { const v = +mt[2]; if (mt[1] === ev.homeAbbr) return v; if (mt[1] === ev.awayAbbr) return -v; }
+    if (/^even|^pk/i.test(d)) return 0;
+    return o.spread && o.spread.home != null ? o.spread.home : null;
+  }
+  const half = x => Math.round(x * 2) / 2 + (Number.isInteger(Math.round(x * 2) / 2) ? 0.5 : 0); // a .5 para que no haya empate
+  function usMatch(ev, nba) {
     const o = ev.odds;
-    if (!o) return { ev, legs: [], winner: null, hasMarket: false };
-    const dh = M.americanToDecimal(o.ml.home), da = M.americanToDecimal(o.ml.away);
-    if (!dh || !da) return { ev, legs: [], winner: null, hasMarket: false };
-    const nv = M.noVig([dh, da]);
-    const mk = (id, label, p, odd) => ({ id, label, p, worst: p, odd, est: odd, ev: p * odd, tag: (p >= 0.45 && p <= 0.55) ? 'volado' : odd < TICKET.MIN_ODD ? 'momio-bajo' : 'mercado', minNeeded: Math.max(TICKET.MIN_ODD, 1 / p) });
-    const legs = [mk('1', `Gana ${shortName(ev.homeName)}`, nv.probs[0], dh), mk('2', `Gana ${shortName(ev.awayName)}`, nv.probs[1], da)];
+    const dh = o && M.americanToDecimal(o.ml.home), da = o && M.americanToDecimal(o.ml.away);
+    const hasML = !!(dh && da);
+    if (!hasML && !nba) return { ev, legs: [], winner: null, hasMarket: false };
+    const tagOf = (p, odd) => (p >= 0.45 && p <= 0.55) ? 'volado' : odd < TICKET.MIN_ODD ? 'momio-bajo' : odd === null ? 'estimado' : 'mercado';
+    const mk = (id, label, p, odd, fn, group = 'Ganador') => {
+      const est = odd || (1 / p) / TICKET.HOUSE_MARGIN;
+      return { id, label, p, worst: p, odd: odd || null, est, ev: odd ? p * odd : null, tag: tagOf(p, odd || est), minNeeded: Math.max(TICKET.MIN_ODD, 1 / p), fn, group };
+    };
+    const H = shortName(ev.homeName), A = shortName(ev.awayName);
+    const sp = homeSpread(ev), tot = o && o.total && o.total.line;
+    const pr = nba && NB ? NB.project(nba.home, nba.away, { spread: sp, total: tot }) : null;
+    let p1, p2;
+    if (hasML) {
+      const nv = M.noVig([dh, da]);
+      p1 = pr ? (1 - NB.CFG.W_MARKET) * NB.phi(pr.mModel / NB.CFG.SD_MARGIN) + NB.CFG.W_MARKET * nv.probs[0] : nv.probs[0];
+    } else if (pr) p1 = pr.pHome; else p1 = 0.5;
+    p2 = 1 - p1;
+    const legs = [mk('1', `Gana ${H}`, p1, hasML ? dh : null, (h, a) => h > a), mk('2', `Gana ${A}`, p2, hasML ? da : null, (h, a) => a > h)];
+    if (pr) {
+      // Hándicap corto del favorito (mitad de la línea): paga más que ganar y evita los -10+ (lección T1).
+      if (sp != null && Math.abs(sp) >= 3) {
+        const favHome = sp < 0, line = half(Math.min(Math.abs(sp) / 2, NB.CFG.MAX_SPREAD));
+        const p = favHome ? NB.pHomeBy(pr, line) : 1 - NB.pHomeBy(pr, -line);
+        legs.push(mk(favHome ? 'S1' : 'S2', `${favHome ? H : A} -${line}`, p, null, favHome ? (h, a) => h - a > line : (h, a) => a - h > line, 'Hándicap'));
+      }
+      // Totales alternos: línea de la casa ± 6.5 (≈ 63%) y ± 10.5 (≈ 71%).
+      if (tot) for (const d of [6.5, 10.5]) {
+        const lo = tot - d, hi = tot + d;
+        legs.push(mk('O' + lo, `Más de ${lo} puntos`, NB.pOver(pr, lo), null, (h, a) => h + a > lo, 'Puntos'));
+        legs.push(mk('U' + hi, `Menos de ${hi} puntos`, 1 - NB.pOver(pr, hi), null, (h, a) => h + a < hi, 'Puntos'));
+      }
+    }
     const w = legs[0].p >= legs[1].p ? legs[0] : legs[1];
-    return { ev, legs, winner: { id: w.id, label: w.label, p: w.p }, safe: { id: w.id, label: w.label, p: w.p }, hasMarket: true, us: true, total: o.total && o.total.line };
+    const info = nba ? { home: nba.home, away: nba.away, proj: pr, spread: sp } : null;
+    return { ev, legs, winner: { id: w.id, label: w.label, p: w.p }, safe: { id: w.id, label: w.label, p: w.p }, hasMarket: hasML, us: true, total: tot, nba: info };
+  }
+
+  // Racha y puntos de los dos equipos (calendario de ESPN de cada uno).
+  async function nbaInfo(ev) {
+    if (!NB) return null;
+    const sch = id => D.get(`apis/site/v2/sports/basketball/nba/teams/${id}/schedule`).then(d => (d.events || []).map(D.parseEvent));
+    const [eh, ea] = await Promise.all([sch(ev.homeId), sch(ev.awayId)]);
+    const home = NB.teamStats(eh, ev.homeId), away = NB.teamStats(ea, ev.awayId);
+    return home && away ? { home, away } : null;
   }
 
   function shortName(n) { return String(n || '').replace(/^(FC|CF|AC|AS|SC|SV|1\. FC|TSG|VfB|RB)\s+/, '').replace(/\s+(FC|CF|UANL)$/, ''); }
@@ -133,7 +184,7 @@
       m.result = `${hs}-${as}`;
       const leg = m.legs && m.legs.length ? bestLeg(m) : null;
       if (leg) {
-        const fn = m.us ? (leg.id === '1' ? (h, a) => h > a : (h, a) => a > h) : fnOf(leg.id);
+        const fn = m.us ? leg.fn : fnOf(leg.id);
         if (fn) { const hit = !!fn(hs, as); legs.push({ match: m, leg, hit }); m.reviewLeg = { label: leg.label, p: leg.p, hit }; }
       }
       if (m.winner && m.winner.p >= 0.6) {
@@ -172,7 +223,12 @@
         const us = US.find(u => u.id === lg);
         if (us) {
           const d = await D.get(`apis/site/v2/sports/${us.sport}/${lg}/scoreboard`, { dates: date });
-          for (const e of (d.events || []).map(D.parseEvent)) out.push({ league: us.name, lg, ...usMatch(e) });
+          const evs = (d.events || []).map(D.parseEvent);
+          const rs = await Promise.all(evs.map(async e => {
+            const nb = lg === 'nba' && !e.completed ? await nbaInfo(e).catch(() => null) : null;
+            return { league: us.name, lg, ...usMatch(e, nb) };
+          }));
+          out.push(...rs);
         } else {
           const d = await D.get(`apis/site/v2/sports/soccer/${lg}/scoreboard`, { dates: date });
           const evs = (d.events || []).map(D.parseEvent);
@@ -355,7 +411,8 @@
       if (!ok.length) continue;
       const mat = m.res && M.scoreMatrix ? M.scoreMatrix(m.res.lh, m.res.la) : null;
       const joint = legs => {
-        const g = legs.filter(l => defs[l.id]), o = legs.filter(l => !defs[l.id]);
+        // NBA/NFL: sin matriz de goles; selecciones casi independientes (ganador + hándicap del mismo equipo van juntas).
+        const g = m.us ? [] : legs.filter(l => defs[l.id]), o = m.us ? legs : legs.filter(l => !defs[l.id]);
         let pg = 1;
         if (g.length > 1 && mat) pg = M.sumWhere(mat, (h, x) => g.every(l => defs[l.id](h, x)));
         else if (g.length === 1) pg = g[0].p;
@@ -371,6 +428,7 @@
         if (cur.length >= perMatch) return;
         for (let i = start; i < ok.length; i++) {
           if (cur.some(l => groupOf(l) === groupOf(ok[i]))) continue;
+          if (m.us && cur.some(l => (l.id + ok[i].id).match(/^(2S1|S12|1S2|S21)$/))) continue; // ganador de uno + hándicap del otro: van en contra
           sub(i + 1, [...cur, ok[i]]);
         }
       };
@@ -395,7 +453,7 @@
   // Boost de Draftea: sube la ganancia (no la entrada) en ese %.
   const boosted = (odd, b) => 1 + (odd - 1) * (1 + (b || 0) / 100);
 
-  const api = { NOT_IN_DRAFTEA, pickN, boosted, PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
+  const api = { nbaInfo, homeSpread, NOT_IN_DRAFTEA, pickN, boosted, PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarDay = api;
 })(typeof window !== 'undefined' ? window : globalThis);
