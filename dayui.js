@@ -376,11 +376,11 @@
             if (pl.out) { outs.push(pl.name); continue; }
             const duda = pl.status && !/^active$/i.test(pl.status);
             if (duda) dudas.push(`${pl.name} (${pl.status})`);
-            for (const l of pl.legs) rows.push({ id: `P${pl.id}${l.stat}${l.line}`, group: `Jugadores · ${tn}`, label: l.label, p: l.p, prov: 1 / l.p / 1.08, src: 'estimado',
+            for (const l of pl.legs) rows.push({ id: `P${pl.id}${l.stat}${l.line}`, group: `Jugadores · ${tn}`, label: l.label, p: l.p, prov: Math.max(1.01, 1 / l.p / 1.08), src: 'estimado',
               extra: `${pl.avg[l.stat].toFixed(1)} prom · ${Math.round(pl.min)} min · ${pl.gp}/${pl.of} jug.${duda ? ' · DUDA' : ''}${pl.missedLast ? ' · no jugó el último' : ''}` });
           }
         }
-        note += ` Jugadores: promedio de sus últimos ${window.RadarNBA.PCFG.GAMES} partidos (60% los últimos 5), solo con ${window.RadarNBA.PCFG.MIN_MIN}+ minutos y líneas de 60%+.${outs.length ? ' Fuera: ' + outs.join(', ') + '.' : ''}${dudas.length ? ' En duda: ' + dudas.join(', ') + '.' : ''}${pp.injuries ? '' : ' ESPN aún no publica lesionados: revisa antes de apostar.'} Modelo de jugadores sin backtest: máx. 1–2 por ticket (lección T4).`;
+        note += ` Jugadores: promedio de sus últimos ${window.RadarNBA.PCFG.GAMES} partidos (60% los últimos 5), solo con ${window.RadarNBA.PCFG.MIN_MIN}+ minutos y líneas de 60–85% (más arriba no pagan).${outs.length ? ' Fuera: ' + outs.join(', ') + '.' : ''}${dudas.length ? ' En duda: ' + dudas.join(', ') + '.' : ''}${pp.injuries ? '' : ' ESPN aún no publica lesionados: revisa antes de apostar.'} Modelo de jugadores sin backtest: máx. 1–2 por ticket (lección T4).`;
       } catch (e) { note += ' No pude cargar los jugadores.'; }
     }
     // Últimos 5 enfrentamientos: contexto (y ya pesan 10% en los goles esperados).

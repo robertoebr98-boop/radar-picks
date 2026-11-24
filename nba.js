@@ -62,7 +62,7 @@
   // Probabilidad: binomial negativa con la media reciente (60% últimos 5 + 40% resto) y dispersión por estadística.
   // Lección de T4: las líneas altas de una sola figura tumban tickets → solo se muestran líneas con ≥ 60%.
   const PCFG = {
-    GAMES: 8, MIN_MIN: 20, MIN_GP: 3, MIN_P: 0.60, MAX_P: 0.95,
+    GAMES: 8, MIN_MIN: 20, MIN_GP: 3, MIN_P: 0.60, MAX_P: 0.85, // arriba de 85% el momio queda ≤ 1.08: no paga nada
     // varianza / media (NBA, aproximado de la literatura de props; sin backtest propio todavía)
     DISP: { pts: 2.2, reb: 1.6, ast: 1.7, tpm: 1.4 },
     LINES: { pts: [5, 10, 15, 20, 25, 30, 35], reb: [2, 4, 6, 8, 10, 12], ast: [2, 4, 6, 8, 10], tpm: [1, 2, 3, 4, 5] },
