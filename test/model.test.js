@@ -357,4 +357,39 @@ t('optimizar ticket: cambia, quita y respeta reglas', () => {
   const many = Array.from({ length: 12 }, (_, i) => ({ key: 'M' + i, matchKey: 'M' + i, match: 'M', label: 'x', p: 0.7 + i / 100, prov: 1.5, provSrc: 'ESPN' }));
   assert.strictEqual(O.optimize(many, new Map()).after.length, 10);
 });
+
+t('NBA: racha, puntos y proyección; mezcla con la casa; sin hándicap -10+', () => {
+  const NB = require('../nba.js'), Y = require('../day.js');
+  const g = (id, opp, pf, pa, home, d) => ({ completed: true, date: `2026-11-${String(d).padStart(2, '0')}T00:00Z`, homeId: home ? id : opp, awayId: home ? opp : id, hs: home ? pf : pa, as: home ? pa : pf });
+  const evH = Array.from({ length: 12 }, (_, i) => g('1', '9', 120, 105, i % 2 === 0, i + 1));
+  const evA = Array.from({ length: 12 }, (_, i) => g('2', '9', 105, 118, i % 2 === 0, i + 1));
+  const h = NB.teamStats(evH, '1'), a = NB.teamStats(evA, '2');
+  assert.strictEqual(h.streak, 'G12'); assert.strictEqual(a.streak, 'P12'); assert.strictEqual(h.w10, 10);
+  const pr = NB.project(h, a, {});
+  assert(pr.margin > 10 && pr.pHome > 0.8, JSON.stringify(pr));
+  const pm = NB.project(h, a, { spread: -4, total: 220 });
+  assert(Math.abs(pm.margin - (pr.margin + 4) / 2) < 1e-9 && Math.abs(pm.total - (pr.total + 220) / 2) < 1e-9);
+  assert(Math.abs(NB.phi(0) - 0.5) < 1e-6 && Math.abs(NB.phi(1) - 0.8413) < 1e-3);
+  const ev = { homeName: 'Boston Celtics', awayName: 'Washington Wizards', homeAbbr: 'BOS', awayAbbr: 'WSH',
+    odds: { ml: { home: -450, away: 350 }, total: { line: 217.5 }, spread: { home: null }, details: 'BOS -22.5' } };
+  assert.strictEqual(Y.homeSpread(ev), -22.5);
+  assert.strictEqual(Y.homeSpread({ ...ev, odds: { ...ev.odds, details: 'WSH -3' } }), 3);
+  const r = Y.usMatch(ev, { home: h, away: a });
+  const s = r.legs.find(l => l.id === 'S1');
+  assert(s && parseFloat(s.label.split('-')[1]) <= 9.5, 'hándicap acotado');
+  assert(r.legs.some(l => l.label === 'Más de 211 puntos') && r.legs.some(l => l.label === 'Menos de 228 puntos'));
+  assert(r.legs.find(l => l.id === '1').odd && r.legs.every(l => typeof l.fn === 'function'));
+  // sin modelo NBA: igual que antes (solo la casa)
+  const r0 = Y.usMatch(ev, null);
+  assert.strictEqual(r0.legs.length, 2);
+});
+t('fútbol: doble oportunidad con momio derivado del 1X2 de la casa', () => {
+  const Y = require('../day.js'), M = require('../model.js');
+  const st = new Map([['1', { gp: 10, gf: 20, ga: 8, pts: 22 }], ['2', { gp: 10, gf: 10, ga: 16, pts: 10 }]]);
+  const ev = { homeId: '1', awayId: '2', homeName: 'A', awayName: 'B', odds: { ml: { home: -150, draw: 280, away: 400 }, total: { line: 2.5, over: -120, under: 100 } } };
+  const r = Y.soccerMatch(ev, st, 1.4, null, null, []);
+  const q = 1 / M.americanToDecimal(-150) + 1 / M.americanToDecimal(280);
+  assert(Math.abs(r.odds['1X'] - 1 / q) < 1e-9);
+  assert(r.legs.find(l => l.id === '1X').odd);
+});
 console.log(`\n${n} pruebas OK`);

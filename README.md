@@ -42,4 +42,4 @@ npm run dev       # http://localhost:3000  (o /?demo=1)
 - ESPN no publica lesiones de fútbol: marca las bajas a mano en la página.
 - Sin xG público gratis: el modelo usa goles reales.
 - La API de ESPN no es oficial; si cambia, hay que ajustar `data.js`.
-- NBA y NFL: siguiente fase.
+- NBA: modelo v1 de puntos por equipo (nba.js) sin backtest; NFL solo con momios de la casa.

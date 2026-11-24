@@ -167,7 +167,13 @@
       over: pick(o.overOdds, o.total?.over?.close?.odds),
       under: pick(o.underOdds, o.total?.under?.close?.odds),
     };
-    return { provider: o.provider?.displayName || o.provider?.name || 'Casa', ml, total };
+    // Hándicap (NBA/NFL): puntos del local; negativo = el local es favorito. "details" ("BOS -10.5") va de respaldo en day.js.
+    const spread = {
+      home: num(pick(o.spread, o.pointSpread?.home?.close?.line, o.pointSpread?.home?.open?.line)),
+      homeOdds: pick(o.homeTeamOdds?.spreadOdds, o.pointSpread?.home?.close?.odds),
+      awayOdds: pick(o.awayTeamOdds?.spreadOdds, o.pointSpread?.away?.close?.odds),
+    };
+    return { provider: o.provider?.displayName || o.provider?.name || 'Casa', ml, total, spread, details: o.details || '' };
   }
 
   async function schedule(lg, teamId, opts = {}) {
