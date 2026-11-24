@@ -392,4 +392,26 @@ t('fútbol: doble oportunidad con momio derivado del 1X2 de la casa', () => {
   assert(Math.abs(r.odds['1X'] - 1 / q) < 1e-9);
   assert(r.legs.find(l => l.id === '1X').odd);
 });
+
+t('NBA jugadores: box score, promedios, bajas y líneas alcanzables', () => {
+  const NB = require('../nba.js');
+  const keys = ['minutes', 'fieldGoalsMade-fieldGoalsAttempted', 'threePointFieldGoalsMade-threePointFieldGoalsAttempted', 'rebounds', 'assists', 'points'];
+  const box = (pts, out) => NB.parseBox({ boxscore: { players: [{ team: { id: '2' }, statistics: [{ keys, athletes: [
+    { athlete: { id: '10', displayName: 'Estrella' }, stats: ['36', '10-20', '3-8', '8', '5', String(pts)] },
+    { athlete: { id: '11', displayName: 'Banca' }, stats: ['12', '2-4', '0-1', '2', '1', '4'] },
+    { athlete: { id: '12', displayName: 'Lesionado' }, stats: out ? [] : ['30', '5-10', '1-3', '4', '2', '14'], didNotPlay: !!out },
+  ] }] }] } });
+  const b = box(28);
+  assert.strictEqual(b[0].tpm, 3); assert.strictEqual(b[0].pts, 28); assert.strictEqual(b[2].dnp, false);
+  const games = [box(26), box(30), box(24), box(28), box(27), box(29, true)];
+  const inj = NB.parseInjuries({ injuries: [{ injuries: [{ athlete: { id: '12', displayName: 'Lesionado' }, status: 'Out' }] }] });
+  const pl = NB.playerLines(games, '2', inj);
+  const st = pl.find(x => x.name === 'Estrella');
+  assert(st && Math.abs(st.min - 36) < 1e-9 && st.legs.length);
+  assert(st.legs.every(l => l.p >= 0.6 && l.p <= 0.95));
+  assert(!pl.some(x => x.name === 'Banca'), 'menos de 20 min fuera');
+  const les = pl.find(x => x.name === 'Lesionado');
+  assert(les && les.out && !les.legs.length && les.missedLast);
+  assert(NB.pAtLeast(27, 20, 2.2) > 0.8 && NB.pAtLeast(27, 35, 2.2) < 0.2);
+});
 console.log(`\n${n} pruebas OK`);
