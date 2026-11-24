@@ -408,7 +408,7 @@ t('NBA jugadores: box score, promedios, bajas y líneas alcanzables', () => {
   const pl = NB.playerLines(games, '2', inj);
   const st = pl.find(x => x.name === 'Estrella');
   assert(st && Math.abs(st.min - 36) < 1e-9 && st.legs.length);
-  assert(st.legs.every(l => l.p >= 0.6 && l.p <= 0.95));
+  assert(st.legs.every(l => l.p >= 0.6 && l.p <= 0.85));
   assert(!pl.some(x => x.name === 'Banca'), 'menos de 20 min fuera');
   const les = pl.find(x => x.name === 'Lesionado');
   assert(les && les.out && !les.legs.length && les.missedLast);
