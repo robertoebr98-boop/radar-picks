@@ -38,6 +38,7 @@
     const p = (async () => {
       if (DEMO) {
         const name = path.replace(/^apis\/(site\/v2|v2)\/sports\/soccer\/[^/]+\//, '').replace(/\//g, '_') + (params.fixture ? '_fixture' : '') + (params.season ? '_prev' : '');
+        if (/^v2\/sports\//.test(path)) return { items: [] }; // API core: sin datos demo
         const r = await fetch(`mock/${name}.json`);
         if (!r.ok) throw new Error('sin datos demo: ' + name);
         state.lastFetch = new Date();
@@ -49,7 +50,7 @@
       if (!r || r.status === 404) {
         // Sin proxy (por ejemplo, abierto como archivo): intento directo.
         const q2 = new URLSearchParams(params).toString();
-        r = await fetch(`https://site.api.espn.com/${path}${q2 ? '?' + q2 : ''}`);
+        r = await fetch(`https://${/^v2\/sports\//.test(path) ? 'sports.core.api.espn.com' : 'site.api.espn.com'}/${path}${q2 ? '?' + q2 : ''}`);
       }
       if (!r.ok) throw new Error(`ESPN respondió ${r.status}`);
       const j = await r.json();
@@ -424,7 +425,23 @@
     return parts.length >= 2 ? [parts[0].trim(), parts.slice(1).join(' ').trim()] : null;
   }
 
-  const api = { LEAGUES, DEMO, h2h, statsFor, get, refresh, state, sameTeam, matchStatsFull, espnDay, matchStats, consensus, ODDS_SPORT, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
+  // API "core" de ESPN (mismo proxy): todas las casas de un partido y props de jugadores.
+  const core = (path, params = {}) => get(path, params);
+
+  // Todas las casas que ESPN publica para un partido de NFL/NBA: pickcenter del resumen + lista core.
+  async function allOdds(sport, lg, eventId) {
+    const [sum, cl] = await Promise.all([
+      get(`apis/site/v2/sports/${sport}/${lg}/summary`, { event: eventId }).catch(() => null),
+      get(`v2/sports/${sport}/leagues/${lg}/events/${eventId}/competitions/${eventId}/odds`, { limit: 50 }).catch(() => null),
+    ]);
+    const out = [];
+    for (const o of (sum && sum.pickcenter) || []) out.push(parseOdds(o));
+    for (const o of (sum && sum.odds) || []) out.push(parseOdds(o));
+    for (const o of (cl && cl.items) || []) if (o && (o.homeTeamOdds || o.moneyline || o.spread != null || o.overUnder != null)) out.push(parseOdds(o));
+    return out.filter(Boolean);
+  }
+
+  const api = { LEAGUES, DEMO, core, allOdds, h2h, statsFor, get, refresh, state, sameTeam, matchStatsFull, espnDay, matchStats, consensus, ODDS_SPORT, teams, standings, schedule, upcoming, summary, teamSplits, findTeam, parseMatchText, parseEvent, parseOdds, norm, num };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarData = api;
 })(typeof window !== 'undefined' ? window : globalThis);

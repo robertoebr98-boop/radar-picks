@@ -134,6 +134,22 @@
     return { ev, legs, winner: { id: w.id, label: w.label, p: w.p }, safe: { id: w.id, label: w.label, p: w.p }, hasMarket: hasML, us: true, total: tot, nba: info };
   }
 
+  // NFL: todas las casas de ESPN unidas; ganador, hándicap, alternos, totales y puntos por equipo (nfl.js).
+  const NF = root.RadarNFL || (typeof require !== 'undefined' ? require('./nfl.js') : null);
+  function nflMatch(ev, extraOdds = []) {
+    const o = NF ? NF.mergeOdds([ev.odds, ...extraOdds], ev) : null;
+    if (!NF || !o) return usMatch(ev, null);
+    const mk = (id, label, p, odd, fn, group = 'Ganador') => {
+      const est = odd || (1 / p) / TICKET.HOUSE_MARGIN;
+      const tag = (p >= 0.45 && p <= 0.55) ? 'volado' : est < TICKET.MIN_ODD ? 'momio-bajo' : odd ? 'mercado' : 'estimado';
+      return { id, label, p, worst: p, odd: odd || null, est, ev: odd ? p * odd : null, tag, minNeeded: Math.max(TICKET.MIN_ODD, 1 / p), fn, group };
+    };
+    const r = NF.legs({ ...ev, odds: o }, o, mk, shortName(ev.homeName), shortName(ev.awayName));
+    if (!r.legs.length) return { ev, legs: [], winner: null, hasMarket: false, us: true };
+    const w = r.legs[0].p >= r.legs[1].p ? r.legs[0] : r.legs[1];
+    return { ev: { ...ev, odds: o }, legs: r.legs, winner: { id: w.id, label: w.label, p: w.p }, safe: { id: w.id, label: w.label, p: w.p }, hasMarket: r.proj.hasML, us: true, total: r.proj.line, nfl: { proj: r.proj, books: o.books } };
+  }
+
   // Racha y puntos de los dos equipos (calendario de ESPN de cada uno).
   async function nbaInfo(ev) {
     if (!NB) return null;
@@ -234,6 +250,10 @@
           const d = await D.get(`apis/site/v2/sports/${us.sport}/${lg}/scoreboard`, { dates: date });
           const evs = (d.events || []).map(D.parseEvent);
           const rs = await Promise.all(evs.map(async e => {
+            if (lg === 'nfl') {
+              const more = !e.completed && D.allOdds ? await D.allOdds('football', 'nfl', e.id).catch(() => []) : [];
+              return { league: us.name, lg, ...nflMatch(e, more) };
+            }
             const nb = lg === 'nba' && !e.completed ? await nbaInfo(e).catch(() => null) : null;
             return { league: us.name, lg, ...usMatch(e, nb) };
           }));
@@ -462,7 +482,7 @@
   // Boost de Draftea: sube la ganancia (no la entrada) en ese %.
   const boosted = (odd, b) => 1 + (odd - 1) * (1 + (b || 0) / 100);
 
-  const api = { sgpOdd, nbaInfo, homeSpread, NOT_IN_DRAFTEA, pickN, boosted, PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
+  const api = { sgpOdd, nbaInfo, nflMatch, homeSpread, NOT_IN_DRAFTEA, pickN, boosted, PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarDay = api;
 })(typeof window !== 'undefined' ? window : globalThis);

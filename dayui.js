@@ -135,6 +135,13 @@
     const proj = pr ? `<br><span class="m">Proyección: ${esc(H)} ${pr.ph.toFixed(0)}–${pr.pa.toFixed(0)} ${esc(A)} · margen ${pr.margin >= 0 ? esc(H) : esc(A)} por ${Math.abs(pr.margin).toFixed(1)} · total ${pr.total.toFixed(1)}${n.spread != null ? ` (casa: ${n.spread > 0 ? '+' : ''}${n.spread} local, ${m.total || '-'} pts)` : ''}</span>` : '';
     return `<br><span class="m">${t(A, n.away)}</span><br><span class="m">${t(H, n.home)}</span>${proj}`;
   }
+  // NFL: marcador que implica la casa (hándicap + total) y cuántas casas se juntaron.
+  function nflHtml(m) {
+    const pr = m.nfl.proj, H = Y.shortName(m.ev.homeName), A = Y.shortName(m.ev.awayName);
+    if (!pr) return '';
+    const b = m.nfl.books || [];
+    return `<br><span class="m">Casa implica: ${esc(H)} ${pr.ph.toFixed(0)}–${pr.pa.toFixed(0)} ${esc(A)} · total ${pr.line != null ? pr.line : pr.total + ' (prom. liga)'}${pr.hasML ? '' : ' · ganador sacado del hándicap'}${b.length ? ` · ${b.length} casa${b.length > 1 ? 's' : ''}: ${esc(b.slice(0, 3).join(', '))}` : ''}</span>`;
+  }
   // Momio de la casa del favorito, a la vista sin abrir el partido.
   function mlLine(m) {
     const w = m.winner && (m.legs || []).find(l => l.id === m.winner.id);
@@ -383,6 +390,25 @@
         note += ` Jugadores: promedio de sus últimos ${window.RadarNBA.PCFG.GAMES} partidos (60% los últimos 5), solo con ${window.RadarNBA.PCFG.MIN_MIN}+ minutos y líneas de 60–85% (más arriba no pagan).${outs.length ? ' Fuera: ' + outs.join(', ') + '.' : ''}${dudas.length ? ' En duda: ' + dudas.join(', ') + '.' : ''}${pp.injuries ? '' : ' ESPN aún no publica lesionados: revisa antes de apostar.'} Modelo de jugadores sin backtest: máx. 1–2 por ticket (lección T4).`;
       } catch (e) { note += ' No pude cargar los jugadores.'; }
     }
+    // NFL: jugadores (últimos 6 box scores de ESPN + lesionados). Momio real si ESPN publica props; si no, estimado.
+    if (m.lg === 'nfl' && window.RadarNFL && !m.ev.completed) {
+      panel.innerHTML = '<div class="loading"><span class="spin"></span>Leyendo los últimos partidos de cada jugador…</div>';
+      try {
+        const NF = window.RadarNFL, pp = await NF.playerProps(D, m.ev);
+        const outs = [], dudas = [];
+        for (const [side, list] of [['away', pp.away], ['home', pp.home]]) {
+          const tn = name(side === 'home' ? m.ev.homeName : m.ev.awayName);
+          for (const pl of list) {
+            if (pl.out) { outs.push(`${pl.name} (${pl.status})`); continue; }
+            const duda = pl.status && !/^active$/i.test(pl.status);
+            if (duda) dudas.push(`${pl.name} (${pl.status})`);
+            for (const l of pl.legs) rows.push({ id: `P${pl.id}${l.stat}${l.line}`, group: `Jugadores · ${tn}`, label: l.label, p: l.p, prov: l.odd || Math.max(1.01, 1 / l.p / 1.08), src: l.odd ? 'casa (ESPN)' : 'estimado',
+              extra: `${pl.avg[l.stat].toFixed(l.stat.endsWith('Yds') ? 0 : 1)} prom · ${pl.gp}/${pl.of} jug.${duda ? ' · DUDA' : ''}${pl.missedLast ? ' · no jugó el último' : ''}` });
+          }
+        }
+        note += ` Jugadores: promedio de sus últimos ${NF.PCFG.GAMES} partidos (60% los últimos 3) y líneas de 60–85%.${pp.realCount ? ` ${pp.realCount} momios reales de props de ESPN.` : ' ESPN no publicó momios de props: momio estimado, escribe el de Draftea.'}${outs.length ? ' Fuera: ' + outs.join(', ') + '.' : ''}${dudas.length ? ' En duda: ' + dudas.join(', ') + '.' : ''}${pp.injuries ? '' : ' ESPN aún no publica lesionados: revisa antes de apostar.'} Sin backtest: máx. 1–2 props por ticket y nada de yardas altas de TE (lección T4).`;
+      } catch (e) { note += ' No pude cargar los jugadores.'; }
+    }
     // Últimos 5 enfrentamientos: contexto (y ya pesan 10% en los goles esperados).
     let h2hHtml = '';
     if (m.h2hGames && m.h2hGames.length && D.statsFor) {
@@ -458,7 +484,7 @@
       const sub = rd ? `<span class="rdl ${rd.tag}">${esc(rd.lines[0])}</span>${rd.lines[1] ? `<br><span class="m">${esc(rd.lines[1])}</span>` : ''}` : w
         ? `${esc(w.label)}${m.safe && m.safe.id !== w.id ? ` · seguro: ${esc(m.safe.label)} ${pct(m.safe.p)}` : ''}${m.res ? ` · goles esperados ${f2(m.res.lh)}–${f2(m.res.la)}` : ''}${m.cons ? ` · consenso ${m.cons.books} casas` : m.hasMarket ? '' : ' · sin momios'}`
         : (m.us ? 'ESPN aún no publica momios' : 'equipo sin partidos en la tabla');
-      const nbaLine = m.nba ? nbaHtml(m) : '';
+      const nbaLine = m.nba ? nbaHtml(m) : m.nfl ? nflHtml(m) : '';
       const clickable = !m.us && !m.noData;
       const idx = SHOWN.push(m) - 1;
       registerMatch(m);
@@ -484,7 +510,7 @@
       const sumTxt = [rv && rv.n ? `selecciones ${rv.hits}/${rv.n}` : '', rdN ? `lectura ${rdOk}/${rdN}` : ''].filter(Boolean).join(' · ');
       html += fold(`Ya jugados hoy <span class="m">${sumTxt}</span>`, ph);
     }
-    html += '<p class="note">Toca un partido para ver el análisis completo. NBA: 50% modelo de puntos por equipo (temporada + últimos 10) y 50% casa; modelo nuevo sin backtest. NFL: probabilidad de la casa sin margen.</p>';
+    html += '<p class="note">Toca un partido para ver el análisis completo. NBA: 50% modelo de puntos por equipo (temporada + últimos 10) y 50% casa; modelo nuevo sin backtest. NFL: todas las casas que publica ESPN juntas; ganador, hándicap, totales y puntos por equipo con el marcador que implica la casa (si falta el ganador, sale del hándicap).</p>';
     $('dout').innerHTML = html;
     LAST = r; renderLadder();
     const lm = $('ladmin'); if (lm) lm.addEventListener('change', () => { LADMIN = +lm.value; renderLadder(); });
