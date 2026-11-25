@@ -31,10 +31,11 @@
   function add(leg) {
     OPT = null; register(leg);
     if (S.legs.some(l => l.key === leg.key)) { remove(leg.key); return false; }
+    S.dftTotal = null;
     S.legs.push({ ...leg, prov: leg.prov ? +(+leg.prov).toFixed(2) : null, dft: null });
     save(); render(); return true;
   }
-  function remove(key) { OPT = null; S.legs = S.legs.filter(l => l.key !== key); save(); render(); }
+  function remove(key) { OPT = null; S.dftTotal = null; S.legs = S.legs.filter(l => l.key !== key); save(); render(); }
   function has(key) { return S.legs.some(l => l.key === key); }
 
   const used = l => l.dft || l.prov;
@@ -73,20 +74,30 @@
     for (const l of other) p *= l.p || 0; // córners, tarjetas…: sin modelo conjunto, se multiplican
     return { p, steps, other, fns, mat, P, lam };
   }
-  function jointP(legs) {
-    const by = new Map();
-    for (const l of legs) { if (!by.has(l.matchKey)) by.set(l.matchKey, []); by.get(l.matchKey).push(l); }
-    let p = 1;
-    for (const g of by.values()) {
-      if (g.length > 1) { const gi = groupInfo(g); p *= gi ? gi.p : g.reduce((a, l) => a * (l.p || 0), 1); }
-      else p *= g[0].p || 0;
-    }
-    return p;
+  const byMatch = legs => { const by = new Map(); for (const l of legs) { if (!by.has(l.matchKey)) by.set(l.matchKey, []); by.get(l.matchKey).push(l); } return [...by.values()]; };
+  // Prob. conjunta de las selecciones de UN partido: con la matriz de goles si es fútbol; si no (NBA, córners…),
+  // correlación positiva moderada: entre el producto y la más débil.
+  function groupP(g) {
+    if (g.length < 2) return g[0].p || 0;
+    const gi = groupInfo(g); if (gi) return gi.p;
+    const ps = g.map(l => Math.max(1e-6, l.p || 0));
+    return Math.min(Math.min(...ps), Math.exp(0.75 * ps.reduce((a, x) => a + Math.log(x), 0)));
   }
+  function jointP(legs) { return byMatch(legs).reduce((p, g) => p * groupP(g), 1); }
+  // SGP: Draftea no multiplica los momios del mismo partido; cobra según la prob. conjunta y le pone margen extra.
+  // Momio del grupo ≈ producto × (prob. independiente ÷ prob. conjunta) × 0.95.
+  const SGP_MARGIN = 0.95;
+  function groupOdd(g, oddOf) {
+    const prod = g.reduce((a, l) => a * (oddOf(l) || 1), 1);
+    if (g.length < 2) return prod;
+    const ind = g.reduce((a, l) => a * (l.p || 0), 1), pj = groupP(g);
+    return pj > 0 ? Math.max(1.01, prod * Math.min(1, ind / pj) * SGP_MARGIN) : prod;
+  }
+  const sgpGroups = legs => byMatch(legs).filter(g => g.length > 1);
 
-  function totals(stake, legs, oddOf) {
-    const ready = legs.length && legs.every(l => oddOf(l) > 1);
-    const odd = legs.reduce((a, l) => a * (oddOf(l) || 1), 1);
+  function totals(stake, legs, oddOf, override) {
+    const ready = !!override || (legs.length && legs.every(l => oddOf(l) > 1));
+    const odd = override || byMatch(legs).reduce((a, g) => a * groupOdd(g, oddOf), 1);
     const p = jointP(legs);
     const payout = stake * odd;
     return { ready, odd, p, payout, profit: payout - stake, ev: p * payout - stake };
@@ -96,7 +107,7 @@
     const stake = Math.max(0, +S.stake || 0);
     const legs = S.legs;
     const prov = totals(stake, legs, l => l.prov);
-    const real = totals(stake, legs, used);
+    const real = totals(stake, legs, used, S.dftTotal || null);
     const withDft = legs.filter(l => l.dft).length;
     const sameMatch = legs.length !== new Set(legs.map(l => l.matchKey)).size;
     const low = legs.filter(l => used(l) && used(l) < 1.30);
@@ -137,12 +148,14 @@
         if (dc && dc.p - l.p >= 0.1) warn.push(`${l.label} → "${dc.label}": ${pct(l.p)} a ${pct(dc.p)}${dc.prov ? ` (~${dc.prov.toFixed(2)})` : ''}.`);
       }
     }
-    if (c.withDft < S.legs.length) warn.push(`${S.legs.length - c.withDft} sin momio de Draftea (usa el provisional).`);
+    if (!S.dftTotal && c.withDft < S.legs.length) warn.push(`${S.legs.length - c.withDft} sin momio de Draftea (usa el provisional).`);
     const P = c.prov, R = c.real;
     const evCls = R.ev >= 0 ? 'good' : 'bad';
     const sign = x => (x >= 0 ? '+' : '') + money(x);
     $('slipbody').innerHTML = S.legs.length ? `
       ${legsHtml}
+      ${(() => { const gs = sgpGroups(S.legs); return gs.length ? `<p class="note"><span class="st vol">SGP</span> ${gs.map(g => `${esc(g[0].match)} (${g.length})`).join(' · ')}: selecciones del mismo partido. Draftea no multiplica sus momios: el provisional ya los baja según qué tan juntas van (prob. conjunta ${gs.map(g => pct(groupP(g))).join(' · ')}).</p>` : ''; })()}
+      <label class="m dfttot">Momio total que muestra Draftea <input class="in sm" id="dfttot" inputmode="decimal" value="${S.dftTotal || ''}" placeholder="ej. 2.41" style="width:80px"> <span class="m">si lo escribes, manda sobre los de cada selección (útil en SGP)</span></label>
       <div class="sgrid">
         <span></span><span class="hd">Provisional</span><span class="hd">Con Draftea</span>
         <span>Momio total</span><b class="num">${P.ready ? P.odd.toFixed(2) : '-'}</b><b class="num">${R.ready ? R.odd.toFixed(2) : '-'}</b>
@@ -176,14 +189,15 @@
       const l = S.legs.find(x => x.key === i.dataset.k);
       if (l) { l.dft = isFinite(n) && n > 1 ? +n.toFixed(2) : null; save(); setTimeout(render); }
     }));
+    const dt = $('dfttot'); if (dt) dt.addEventListener('change', () => { const n = parseFloat(dt.value.replace(',', '.')); S.dftTotal = isFinite(n) && n > 1 ? +n.toFixed(2) : null; save(); setTimeout(render); });
     $('slipbody').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => remove(b.dataset.rm)));
     const dv = $('dftv'); if (dv) dv.addEventListener('click', () => { DFTV = !DFTV; render(); if (DFTV) { const b = $('dftbox2'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } });
     $('slipbody').querySelectorAll('[data-done]').forEach(b => b.addEventListener('change', () => { if (b.checked) DONE.add(b.dataset.done); else DONE.delete(b.dataset.done); render(); }));
     $('slipbody').querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => copyTxt(b.dataset.copy, b)));
     const ca = $('dftcopy'); if (ca) ca.addEventListener('click', () => copyTxt(draftText(), ca));
-    const clr = $('slipclear'); if (clr) clr.addEventListener('click', () => { S.legs = []; OPT = null; save(); render(); });
+    const clr = $('slipclear'); if (clr) clr.addEventListener('click', () => { S.dftTotal = null; S.legs = []; OPT = null; save(); render(); });
     const bk = $('bank'); if (bk) bk.addEventListener('change', () => { const n = parseFloat(bk.value.replace(',', '.')); try { if (n > 0) localStorage.setItem(BK, String(n)); else localStorage.removeItem(BK); } catch (e) { /* nada */ } render(); });
-    const us = $('usesug'); if (us) us.addEventListener('click', () => { const MO = window.RadarMoney, c2 = calc(), R2 = totals(+S.stake || 0, S.legs, used); const kind = ($('savekind') && $('savekind').value) || 'regular'; const open = window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set(); const sg = MO.suggestStake({ bank: bank(), p: c2.p, odd: R2.odd, kind, overlap: S.legs.some(l => open.has(l.matchKey)) }); S.stake = sg.amount; save(); render(); });
+    const us = $('usesug'); if (us) us.addEventListener('click', () => { const MO = window.RadarMoney, c2 = calc(), R2 = totals(+S.stake || 0, S.legs, used, S.dftTotal || null); const kind = ($('savekind') && $('savekind').value) || 'regular'; const open = window.RadarSaved && window.RadarSaved.openMatchKeys ? window.RadarSaved.openMatchKeys() : new Set(); const sg = MO.suggestStake({ bank: bank(), p: c2.p, odd: R2.odd, kind, overlap: S.legs.some(l => open.has(l.matchKey)) }); S.stake = sg.amount; save(); render(); });
     const ob = $('optgo'); if (ob) ob.addEventListener('click', () => { OPT = runOpt(); setTimeout(render); });
     const oo = $('optopen'); if (oo) oo.addEventListener('change', () => { optOpen = oo.checked; if (OPT) OPT = runOpt(); setTimeout(render); });
     const oa = $('optmode'); if (oa) oa.addEventListener('change', () => { optMode = oa.value; if (OPT) OPT = runOpt(); setTimeout(render); });
@@ -363,6 +377,6 @@
 
   function snapshot() { return JSON.parse(JSON.stringify({ stake: S.stake, legs: S.legs })); }
   function loadTicket(t) { OPT = null; S = { stake: +t.stake || 10, legs: JSON.parse(JSON.stringify(t.legs || [])) }; render(); }
-  window.RadarSlip = { setStake: v => { S.stake = +v || S.stake; render(); }, jointP, register, add, remove, has, refresh: render, calc: () => calc(), snapshot, load: loadTicket };
+  window.RadarSlip = { groupOdd, groupP, setStake: v => { S.stake = +v || S.stake; render(); }, jointP, register, add, remove, has, refresh: render, calc: () => calc(), snapshot, load: loadTicket };
   init();
 })();

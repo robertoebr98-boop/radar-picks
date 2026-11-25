@@ -145,6 +145,15 @@
 
   function shortName(n) { return String(n || '').replace(/^(FC|CF|AC|AS|SC|SV|1\. FC|TSG|VfB|RB)\s+/, '').replace(/\s+(FC|CF|UANL)$/, ''); }
 
+  // SGP: varias selecciones del mismo partido no se pagan multiplicando; Draftea cobra según la prob. conjunta
+  // (mismo criterio que la calculadora): producto × (prob. independiente ÷ conjunta) × 0.95.
+  function sgpOdd(legs, pJoint) {
+    const prod = legs.reduce((a, l) => a * (l.odd || l.est), 1);
+    if (legs.length < 2 || !(pJoint > 0)) return prod;
+    const ind = legs.reduce((a, l) => a * l.p, 1);
+    return Math.max(1.01, prod * Math.min(1, ind / pJoint) * 0.95);
+  }
+
   // Elige la mejor selección de cada partido (una por partido: selecciones del mismo partido se mueven juntas).
   function bestLeg(match, rules = TICKET) {
     const ok = match.legs.filter(l => l.tag !== 'volado' && l.tag !== 'momio-bajo' && l.est >= TICKET.MIN_ODD && l.p >= rules.MIN_P);
@@ -347,7 +356,7 @@
     const defs = {}; for (const d of M.marketDefs('L', 'V')) defs[d.id] = d.fn;
     const groupOf = l => l.group || (l.prop ? 'Conteo' : ({ '1': 'R', 'X': 'R', '2': 'R', '1X': 'R', 'X2': 'R', '12': 'R' }[l.id] || (/^(1|2|1X|X2|12)&/.test(l.id) ? 'R' : 'Goles')));
     const opt = (m, legs, p) => {
-      const odd = legs.reduce((a, l) => a * (l.odd || l.est), 1);
+      const odd = sgpOdd(legs, p);
       return { match: m, legs, p, odd, n: legs.length, w: Math.max(1, Math.round(Math.log(odd) / STEP)), lp: Math.log(p) };
     };
     const per = [];
@@ -433,7 +442,7 @@
         }
       };
       if (perMatch >= 2) sub(0, []);
-      per.push(os.map(o => ({ ...o, match: m, odd: o.legs.reduce((a, l) => a * (l.odd || l.est), 1), lp: Math.log(o.p) })));
+      per.push(os.map(o => ({ ...o, match: m, odd: sgpOdd(o.legs, o.p), lp: Math.log(o.p) })));
     }
     // dp[k] = combinación más probable con k selecciones.
     let dp = new Array(n + 1).fill(null); dp[0] = { lp: 0, picks: [] };
@@ -453,7 +462,7 @@
   // Boost de Draftea: sube la ganancia (no la entrada) en ese %.
   const boosted = (odd, b) => 1 + (odd - 1) * (1 + (b || 0) / 100);
 
-  const api = { nbaInfo, homeSpread, NOT_IN_DRAFTEA, pickN, boosted, PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
+  const api = { sgpOdd, nbaInfo, homeSpread, NOT_IN_DRAFTEA, pickN, boosted, PROP_LGS, propLegs, dreamParlay, bestCombos, safeLadder, US, TICKET, runDay, reviewPlayed, strategy, soccerMatch, usMatch, buildTicket, bestLeg, valuePicks, shortName, formArr };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RadarDay = api;
 })(typeof window !== 'undefined' ? window : globalThis);

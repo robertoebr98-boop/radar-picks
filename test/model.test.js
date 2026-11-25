@@ -414,4 +414,13 @@ t('NBA jugadores: box score, promedios, bajas y líneas alcanzables', () => {
   assert(les && les.out && !les.legs.length && les.missedLast);
   assert(NB.pAtLeast(27, 20, 2.2) > 0.8 && NB.pAtLeast(27, 35, 2.2) < 0.2);
 });
+
+t('SGP: el momio de selecciones del mismo partido baja con la correlación', () => {
+  const Y = require('../day.js');
+  const legs = [{ p: 0.7, odd: 1.35 }, { p: 0.75, odd: 1.3 }];
+  assert(Math.abs(Y.sgpOdd(legs, 0.7 * 0.75) - 1.35 * 1.3 * 0.95) < 1e-9);
+  const corr = Y.sgpOdd(legs, 0.66);
+  assert(corr < 1.35 * 1.3 * 0.8 && corr > 1.01);
+  assert.strictEqual(Y.sgpOdd([legs[0]], 0.7), 1.35);
+});
 console.log(`\n${n} pruebas OK`);
