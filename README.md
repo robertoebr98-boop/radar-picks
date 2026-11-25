@@ -5,7 +5,7 @@ Escribe el partido ("Tigres vs América") y la página trae tabla, forma de los 
 **Costo: $0.** Datos públicos de ESPN (sin API key), modelo propio en JavaScript (sin IA), hosting gratis en Vercel.
 
 ## Pronóstico del día
-Elige fecha y liga (o todas): analiza cada partido con tabla + forma + momios de ESPN, da el ganador probable y arma un ticket sugerido (una selección por partido, prob ≥ 62%, momio ≥ 1.30, sin volados, máx 10). NBA y NFL: probabilidad de la casa sin margen.
+Elige fecha y liga (o todas): analiza cada partido con tabla + forma + momios de ESPN, da el ganador probable y arma un ticket sugerido (una selección por partido, prob ≥ 62%, momio ≥ 1.30, sin volados, máx 10). NBA: modelo de puntos por equipo + casa. NFL: junta todas las casas que publica ESPN (scoreboard, pickcenter y API core); si falta el ganador lo saca del hándicap; agrega hándicap principal y alternos, totales (±6.5 y ±10.5), puntos por equipo y props de jugadores (yardas de pase/carrera/recepción, recepciones, pases completos, TD) con últimos 6 box scores. Momio real de props si ESPN lo publica (`propBets`), si no, estimado.
 
 ## Más fuentes (gratis)
 - **Remates a puerta** por partido: calendario de ESPN (automático).
@@ -26,6 +26,7 @@ Cada equipo lleva etiqueta: Ya clasificado / Se juega algo / Nada en juego (solo
 - `saved.js`: Mis tickets.
 - `slip.js`: calculadora de ticket.
 - `day.js`, `dayui.js`: pronóstico del día.
+- `nba.js`, `nfl.js`: modelos y mercados de NBA y NFL.
 - `index.html`, `app.js`: la página.
 - `model.js`: el modelo (Poisson, Dixon-Coles, mezcla con mercado, filtros).
 - `data.js`: lectura de ESPN.

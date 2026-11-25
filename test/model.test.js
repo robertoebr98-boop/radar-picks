@@ -423,4 +423,70 @@ t('SGP: el momio de selecciones del mismo partido baja con la correlación', () 
   assert(corr < 1.35 * 1.3 * 0.8 && corr > 1.01);
   assert.strictEqual(Y.sgpOdd([legs[0]], 0.7), 1.35);
 });
+
+t('NFL: junta casas, ganador desde el hándicap, alternos y puntos por equipo', () => {
+  const NF = require('../nfl.js'), Y = require('../day.js'), D = require('../data.js');
+  // ESPN scoreboard: solo "details" y total (sin moneyline) → antes la NFL salía sin momios.
+  const sb = D.parseOdds({ provider: { name: 'ESPN BET' }, details: 'KC -7.5', overUnder: 44.5 });
+  const pc = D.parseOdds({ provider: { name: 'DraftKings' }, homeTeamOdds: { moneyLine: -380, spreadOdds: -110 }, awayTeamOdds: { moneyLine: 300, spreadOdds: -110 }, spread: -7.5, overUnder: 45.5, overOdds: -105, underOdds: -115 });
+  const ev = { id: '1', date: '2026-11-29T18:00Z', homeName: 'Kansas City Chiefs', awayName: 'Las Vegas Raiders', homeAbbr: 'KC', awayAbbr: 'LV', homeId: '12', awayId: '13', odds: sb };
+  const only = Y.nflMatch(ev, []);
+  assert(only.legs.length > 6, 'sin moneyline igual hay mercados');
+  const w = only.legs.find(l => l.id === '1');
+  assert(!w.odd && w.p > 0.65 && w.p < 0.75, 'ganador sacado del hándicap ' + w.p);
+  const r = Y.nflMatch(ev, [pc]);
+  const ml = r.legs.find(l => l.id === '1');
+  assert(Math.abs(ml.odd - (1 + 100 / 380)) < 1e-9, 'moneyline de la otra casa');
+  assert(r.nfl.books.length === 2 && r.total === 44.5);
+  const ids = r.legs.map(l => l.id);
+  for (const id of ['SPH', 'SPA', 'S1', 'D2', 'OT', 'UT', 'O37.5', 'U54.5']) assert(ids.includes(id), 'falta ' + id + ' en ' + ids);
+  assert(r.legs.find(l => l.id === 'S1').label === 'Kansas City Chiefs -3.5');
+  assert(r.legs.find(l => l.id === 'D2').label === 'Las Vegas Raiders +14.5');
+  assert(r.legs.find(l => l.id === 'SPH').tag === 'volado');
+  const tt = r.legs.filter(l => l.group === 'Puntos por equipo');
+  assert(tt.length === 2 && tt.every(l => l.p > 0.7 && l.p < 0.8), JSON.stringify(tt.map(l => [l.label, l.p])));
+  assert(r.legs.every(l => typeof l.fn === 'function' && l.p > 0 && l.p < 1));
+  assert(r.legs.find(l => l.id === 'D2').fn(20, 10) && !r.legs.find(l => l.id === 'D2').fn(30, 10));
+  // ganador real del ticket sugerido: nunca un volado
+  assert(Y.bestLeg(r) && Y.bestLeg(r).tag !== 'volado');
+  // sin nada de momios: sin mercados (no se inventa)
+  assert.strictEqual(Y.nflMatch({ ...ev, odds: null }, []).legs.length, 0);
+  assert(Math.abs(NF.invPhi(NF.phi(0.7)) - 0.7) < 1e-6);
+});
+
+t('NFL jugadores: box score, líneas X+ de 60–85%, lesionados y momios reales de props', () => {
+  const NF = require('../nfl.js');
+  const box = (py, ry, rec, recYds, td) => NF.parseBox({ boxscore: { players: [{ team: { id: '12' }, statistics: [
+    { name: 'passing', keys: ['completions/passingAttempts', 'passingYards', 'yardsPerPassAttempt', 'passingTouchdowns', 'interceptions'], athletes: [{ athlete: { id: '3139477', displayName: 'Mariscal' }, stats: ['24/35', String(py), '7.4', '2', '0'] }] },
+    { name: 'rushing', keys: ['rushingAttempts', 'rushingYards', 'yardsPerRushAttempt', 'rushingTouchdowns', 'longRushing'], athletes: [{ athlete: { id: '20', displayName: 'Corredor' }, stats: ['18', String(ry), '4.5', String(td), '20'] }] },
+    { name: 'receiving', keys: ['receptions', 'receivingYards', 'yardsPerReception', 'receivingTouchdowns', 'longReception', 'receivingTargets'], athletes: [
+      { athlete: { id: '30', displayName: 'Receptor' }, stats: [String(rec), String(recYds), '12', '0', '30', '9'] },
+      { athlete: { id: '31', displayName: 'Lesionado' }, stats: ['5', '60', '12', '0', '20', '7'] }] },
+  ] }] } });
+  const b = box(260, 80, 7, 85, 1);
+  const q = b.find(x => x.name === 'Mariscal');
+  assert(q.cmp === 24 && q.att === 35 && q.passYds === 260 && q.passTd === 2);
+  const games = [box(250, 70, 6, 80, 0), box(270, 90, 7, 90, 1), box(240, 75, 6, 70, 1), box(280, 85, 8, 95, 0), box(255, 80, 7, 88, 1), box(265, 78, 7, 84, 1)];
+  const inj = NF.parseInjuries({ injuries: [{ injuries: [{ athlete: { id: '31', displayName: 'Lesionado' }, status: 'Out' }] }] });
+  const real = NF.parsePropBets({ items: [
+    { type: { name: 'Total Passing Yards' }, athlete: { $ref: 'http://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2026/athletes/3139477?lang=en' }, odds: { american: { value: '-115' }, total: { value: 224.5 } } },
+    { type: { name: 'Total Passing Yards' }, athlete: { $ref: '.../athletes/3139477' }, odds: { american: { value: '-105' }, total: { value: 224.5 }, side: 'under' } },
+    { type: { name: 'Raro' }, athlete: { $ref: '.../athletes/1' }, odds: { american: { value: '+100' } } },
+  ] });
+  assert(real.size === 1 && Math.abs(real.get('3139477|passYds|225') - (1 + 100 / 115)) < 1e-9);
+  const pl = NF.playerLines(games, '12', inj, real);
+  const qb = pl.find(x => x.name === 'Mariscal');
+  assert(qb && qb.legs.length && qb.legs.every(l => l.p >= 0.6 && l.p <= 0.85), JSON.stringify(qb && qb.legs));
+  assert(qb.legs.some(l => l.stat === 'passYds') && qb.legs.some(l => l.stat === 'cmp'));
+  const p225 = qb.legs.find(l => l.stat === 'passYds' && l.line === 225);
+  assert(p225 && p225.odd, 'momio real enganchado a la línea 225+');
+  const rb = pl.find(x => x.name === 'Corredor');
+  assert(rb && rb.legs.some(l => l.stat === 'rushYds'));
+  const wr = pl.find(x => x.name === 'Receptor');
+  assert(wr && wr.legs.some(l => l.stat === 'rec') && wr.legs.some(l => l.stat === 'recYds'));
+  const les = pl.find(x => x.name === 'Lesionado');
+  assert(les && les.out && !les.legs.length);
+  assert(NF.pYds('passYds', 260, 200) > 0.75 && NF.pYds('passYds', 260, 300) < 0.35);
+  assert.strictEqual(NF.parsePropBets(null).size, 0);
+});
 console.log(`\n${n} pruebas OK`);
